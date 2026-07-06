@@ -1,16 +1,17 @@
-import fs from 'fs';
-import path from 'path';
-import mongoose from 'mongoose';
-import { openDatabase } from './sqliteReader.js';
-import { parseMoneyManagerBackup } from './parseMmBackup.js';
-import { ImportJob } from '../../models/ImportJob.js';
-import { Account } from '../../models/Account.js';
-import { Category } from '../../models/Category.js';
-import { Transaction } from '../../models/Transaction.js';
-import { User } from '../../models/User.js';
-import { onIncomeCreated } from '../../services/automationEngine.js';
+import fs from "fs";
+import path from "path";
+import mongoose from "mongoose";
+import { openDatabase } from "./sqliteReader.js";
+import { parseMoneyManagerBackup } from "./parseMmBackup.js";
+import { ImportJob } from "../../models/ImportJob.js";
+import { Account } from "../../models/Account.js";
+import { Category } from "../../models/Category.js";
+import { Transaction } from "../../models/Transaction.js";
+import { User } from "../../models/User.js";
+import { resolveCurrency } from "../currency.js";
+import { onIncomeCreated } from "../../services/automationEngine.js";
 
-const UPLOAD_DIR = path.resolve('uploads');
+const UPLOAD_DIR = path.resolve("uploads");
 
 export function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -26,11 +27,15 @@ export function previewBackupFile(filePath: string) {
   }
 }
 
-export async function createImportPreview(userId: string, filePath: string, fileName: string) {
+export async function createImportPreview(
+  userId: string,
+  filePath: string,
+  fileName: string,
+) {
   const parsed = previewBackupFile(filePath);
   const job = await ImportJob.create({
     userId,
-    status: 'preview',
+    status: "preview",
     fileName,
     preview: parsed.preview,
     filePath,
@@ -41,11 +46,15 @@ export async function createImportPreview(userId: string, filePath: string, file
 export async function confirmImport(
   userId: string,
   jobId: string,
-  runAutomationsOnImport: boolean
+  runAutomationsOnImport: boolean,
 ) {
-  const job = await ImportJob.findOne({ _id: jobId, userId, status: 'preview' });
+  const job = await ImportJob.findOne({
+    _id: jobId,
+    userId,
+    status: "preview",
+  });
   if (!job || !job.filePath || !fs.existsSync(job.filePath)) {
-    throw new Error('Import job not found or file expired');
+    throw new Error("Import job not found or file expired");
   }
 
   const { db, sqlitePath, isExtracted } = openDatabase(job.filePath);
@@ -59,10 +68,15 @@ export async function confirmImport(
 
   try {
     const accountIdByExternal = new Map<string, mongoose.Types.ObjectId>();
+    const accountCurrencyById = new Map<string, string>();
     for (const a of parsed.accounts) {
-      const existing = await Account.findOne({ userId, externalUid: a.externalUid });
+      const existing = await Account.findOne({
+        userId,
+        externalUid: a.externalUid,
+      });
       if (existing) {
         accountIdByExternal.set(a.externalUid, existing._id);
+        accountCurrencyById.set(existing._id.toString(), existing.currency);
         continue;
       }
       const created = await Account.create({
@@ -70,14 +84,21 @@ export async function confirmImport(
         name: a.name,
         balance: a.balance,
         externalUid: a.externalUid,
-        source: 'money_manager',
+        source: "money_manager",
       });
       accountIdByExternal.set(a.externalUid, created._id);
+      accountCurrencyById.set(created._id.toString(), created.currency);
     }
+
+    const user = await User.findById(userId).select("settings.defaultCurrency");
+    const userDefault = user?.settings?.defaultCurrency ?? "PKR";
 
     const categoryIdByExternal = new Map<string, mongoose.Types.ObjectId>();
     for (const c of parsed.categories) {
-      const existing = await Category.findOne({ userId, externalUid: c.externalUid });
+      const existing = await Category.findOne({
+        userId,
+        externalUid: c.externalUid,
+      });
       if (existing) {
         categoryIdByExternal.set(c.externalUid, existing._id);
         continue;
@@ -92,7 +113,7 @@ export async function confirmImport(
         type: c.type,
         parentId,
         externalUid: c.externalUid,
-        source: 'money_manager',
+        source: "money_manager",
       });
       categoryIdByExternal.set(c.externalUid, created._id);
     }
@@ -101,7 +122,10 @@ export async function confirmImport(
     let skipped = 0;
 
     for (const t of parsed.transactions) {
-      const dup = await Transaction.findOne({ userId, externalUid: t.externalUid });
+      const dup = await Transaction.findOne({
+        userId,
+        externalUid: t.externalUid,
+      });
       if (dup) {
         skipped++;
         continue;
@@ -109,6 +133,13 @@ export async function confirmImport(
 
       const accountId = accountIdByExternal.get(t.accountExternalUid);
       if (!accountId) continue;
+
+      const accountIdStr = accountId.toString();
+      const currency = resolveCurrency(
+        undefined,
+        accountCurrencyById.get(accountIdStr),
+        userDefault,
+      );
 
       await Transaction.create({
         userId,
@@ -122,29 +153,38 @@ export async function confirmImport(
         toAccountId: t.toAccountExternalUid
           ? accountIdByExternal.get(t.toAccountExternalUid)
           : undefined,
+        currency,
         memo: t.memo,
         externalUid: t.externalUid,
-        source: 'money_manager',
+        source: "money_manager",
         importedAt: new Date(),
       });
       imported++;
     }
 
     if (runAutomationsOnImport) {
-      await User.updateOne({ _id: userId }, { 'settings.runAutomationsOnImport': true });
+      await User.updateOne(
+        { _id: userId },
+        { "settings.runAutomationsOnImport": true },
+      );
 
       const importedIncome = await Transaction.find({
         userId,
-        source: 'money_manager',
-        type: 'income',
+        source: "money_manager",
+        type: "income",
       });
 
       for (const txn of importedIncome) {
-        await onIncomeCreated(userId, txn._id.toString(), txn.amount, 'money_manager');
+        await onIncomeCreated(
+          userId,
+          txn._id.toString(),
+          txn.amount,
+          "money_manager",
+        );
       }
     }
 
-    job.status = 'completed';
+    job.status = "completed";
     job.preview = { ...parsed.preview, imported, skipped };
     fs.unlinkSync(job.filePath);
     job.filePath = undefined;
@@ -152,8 +192,8 @@ export async function confirmImport(
 
     return { imported, skipped, preview: parsed.preview };
   } catch (err) {
-    job.status = 'failed';
-    job.error = err instanceof Error ? err.message : 'Import failed';
+    job.status = "failed";
+    job.error = err instanceof Error ? err.message : "Import failed";
     await job.save();
     throw err;
   }

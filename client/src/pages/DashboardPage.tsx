@@ -1,41 +1,106 @@
-import { useEffect, useState } from 'react';
-import { api, formatMoney, type Account, type Transaction } from '../api/client';
-import { useAuth } from '../hooks/useAuth';
-import { TransactionItem } from '../components/TransactionItem';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  api,
+  formatMoney,
+  type EntityWithSummary,
+  type Transaction,
+} from "../api/client";
+import { TransactionItem } from "../components/TransactionItem";
+import { FALLBACK_CURRENCY } from "../lib/currencies";
 
 export function DashboardPage() {
-  const { user } = useAuth();
-  const currency = user?.settings?.defaultCurrency ?? 'USD';
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [pendingLoans, setPendingLoans] = useState<EntityWithSummary[]>([]);
+  const [takeBack, setTakeBack] = useState<
+    (EntityWithSummary & { loanBalance?: number })[]
+  >([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
-    Promise.all([api.getAccounts(), api.getTransactions()]).then(([a, t]) => {
-      setAccounts(a);
-      setTransactions(t.slice(0, 5));
+    Promise.all([
+      api.getEntities("i_owe"),
+      api.getLoanBalances("they_owe_me"),
+      api.getTransactions(),
+    ]).then(([pending, balances, txns]) => {
+      setPendingLoans(pending);
+      setTakeBack(balances);
+      setTransactions(txns.slice(0, 5));
     });
   }, []);
-
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
 
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-2 text-sm text-zinc-400">Total balance</h2>
-        <p className="text-3xl font-semibold">{formatMoney(totalBalance, currency)}</p>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm text-zinc-400">Pending Loans</h2>
+          <Link
+            to="/loans"
+            className="text-xs text-emerald-400 hover:text-emerald-300"
+          >
+            View all
+          </Link>
+        </div>
+        <div className="space-y-2">
+          {pendingLoans.length === 0 ? (
+            <p className="text-sm text-zinc-500">Nothing owed yet.</p>
+          ) : (
+            pendingLoans.map((e) => (
+              <Link
+                key={e._id}
+                to={`/loans/${e._id}`}
+                className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
+              >
+                <div>
+                  <p className="font-medium">{e.name}</p>
+                  <p className="text-xs text-zinc-500">
+                    {e.currency ?? FALLBACK_CURRENCY}
+                  </p>
+                </div>
+                <p className="text-sm text-rose-300">
+                  {formatMoney(
+                    e.obligationSummary.remaining,
+                    e.currency ?? FALLBACK_CURRENCY,
+                  )}
+                </p>
+              </Link>
+            ))
+          )}
+        </div>
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm text-zinc-400">Accounts</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm text-zinc-400">Money to Take Back</h2>
+          <Link
+            to="/loans"
+            className="text-xs text-emerald-400 hover:text-emerald-300"
+          >
+            View all
+          </Link>
+        </div>
         <div className="space-y-2">
-          {accounts.length === 0 ? (
-            <p className="text-sm text-zinc-500">No accounts yet. Add one from Add.</p>
+          {takeBack.length === 0 ? (
+            <p className="text-sm text-zinc-500">No one owes you yet.</p>
           ) : (
-            accounts.map((a) => (
-              <div key={a._id} className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2">
-                <span>{a.name}</span>
-                <span>{formatMoney(a.balance, a.currency)}</span>
-              </div>
+            takeBack.map((e) => (
+              <Link
+                key={e._id}
+                to={`/loans/${e._id}`}
+                className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
+              >
+                <div>
+                  <p className="font-medium">{e.name}</p>
+                  <p className="text-xs text-zinc-500">
+                    {e.currency ?? FALLBACK_CURRENCY}
+                  </p>
+                </div>
+                <p className="text-sm text-emerald-300">
+                  {formatMoney(
+                    e.loanBalance ?? 0,
+                    e.currency ?? FALLBACK_CURRENCY,
+                  )}
+                </p>
+              </Link>
             ))
           )}
         </div>
@@ -48,7 +113,7 @@ export function DashboardPage() {
             <p className="text-sm text-zinc-500">No transactions yet.</p>
           ) : (
             transactions.map((t) => (
-              <TransactionItem key={t._id} transaction={t} currency={currency} />
+              <TransactionItem key={t._id} transaction={t} />
             ))
           )}
         </div>

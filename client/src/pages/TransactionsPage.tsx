@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, formatMoney, type Transaction } from "../api/client";
-import { useAuth } from "../hooks/useAuth";
-import { TransactionItem } from "../components/TransactionItem";
 import {
   endOfMonth,
   groupByMonthAndDay,
@@ -9,6 +7,8 @@ import {
   toApiDate,
   type MonthGroup,
 } from "../lib/groupTransactions";
+import { totalsByCurrency, type CurrencyTotals } from "../lib/currencyTotals";
+import { TransactionItem } from "../components/TransactionItem";
 
 type RangeMode = "month" | "3m" | "6m" | "year" | "custom";
 
@@ -43,20 +43,38 @@ function getRange(
   }
 }
 
-function PeriodSummary({
-  title,
+function CurrencyRow({
+  currency,
   income,
   expense,
-  currency,
+}: {
+  currency: string;
+  income: number;
+  expense: number;
+}) {
+  const net = income - expense;
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      <span className="w-full text-xs font-medium text-zinc-500">{currency}</span>
+      <span className="text-emerald-400">Income +{formatMoney(income, currency)}</span>
+      <span className="text-rose-400">Expense -{formatMoney(expense, currency)}</span>
+      <span className={net >= 0 ? "text-emerald-300" : "text-rose-300"}>
+        Net {net >= 0 ? "+" : "-"}
+        {formatMoney(Math.abs(net), currency)}
+      </span>
+    </div>
+  );
+}
+
+function PeriodSummary({
+  title,
+  byCurrency,
   prominent,
 }: {
   title: string;
-  income: number;
-  expense: number;
-  currency: string;
+  byCurrency: CurrencyTotals[];
   prominent?: boolean;
 }) {
-  const net = income - expense;
   return (
     <div
       className={`mb-3 rounded-lg border px-3 py-2.5 ${
@@ -68,38 +86,20 @@ function PeriodSummary({
       <p className={`mb-2 text-sm font-semibold ${prominent ? "text-emerald-200" : "text-zinc-200"}`}>
         {title}
       </p>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        <span className="text-emerald-400">Income +{formatMoney(income, currency)}</span>
-        <span className="text-rose-400">Expense -{formatMoney(expense, currency)}</span>
-        <span className={net >= 0 ? "text-emerald-300" : "text-rose-300"}>
-          Net {net >= 0 ? "+" : "-"}
-          {formatMoney(Math.abs(net), currency)}
-        </span>
+      <div className="space-y-2">
+        {byCurrency.map((row) => (
+          <CurrencyRow key={row.currency} {...row} />
+        ))}
       </div>
     </div>
   );
 }
 
-function MonthSummary({
-  month,
-  currency,
-}: {
-  month: MonthGroup;
-  currency: string;
-}) {
-  return (
-    <PeriodSummary
-      title={month.label}
-      income={month.income}
-      expense={month.expense}
-      currency={currency}
-    />
-  );
+function MonthSummary({ month }: { month: MonthGroup }) {
+  return <PeriodSummary title={month.label} byCurrency={month.byCurrency} />;
 }
 
 export function TransactionsPage() {
-  const { user } = useAuth();
-  const currency = user?.settings?.defaultCurrency ?? "USD";
   const [rangeMode, setRangeMode] = useState<RangeMode>("month");
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [customFrom, setCustomFrom] = useState("");
@@ -125,11 +125,10 @@ export function TransactionsPage() {
     [transactions],
   );
 
-  const combinedSummary = useMemo(() => {
-    const income = months.reduce((sum, m) => sum + m.income, 0);
-    const expense = months.reduce((sum, m) => sum + m.expense, 0);
-    return { income, expense };
-  }, [months]);
+  const combinedSummary = useMemo(
+    () => totalsByCurrency(transactions),
+    [transactions],
+  );
 
   const combinedTitle = useMemo(() => {
     if (rangeMode === "3m") return "Last 3 months";
@@ -220,19 +219,17 @@ export function TransactionsPage() {
         <p className="text-sm text-zinc-500">No transactions in this period.</p>
       ) : (
         <div className="space-y-6">
-          {rangeMode !== "month" && (
+          {rangeMode !== "month" && combinedSummary.length > 0 && (
             <PeriodSummary
               title={combinedTitle}
-              income={combinedSummary.income}
-              expense={combinedSummary.expense}
-              currency={currency}
+              byCurrency={combinedSummary}
               prominent
             />
           )}
 
           {months.map((month) => (
             <section key={month.key}>
-              <MonthSummary month={month} currency={currency} />
+              <MonthSummary month={month} />
 
               <div className="space-y-4">
                 {month.days.map((day) => (
@@ -245,7 +242,6 @@ export function TransactionsPage() {
                         <TransactionItem
                           key={t._id}
                           transaction={t}
-                          currency={currency}
                           hideDate
                         />
                       ))}

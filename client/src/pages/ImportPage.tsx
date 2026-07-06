@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api, formatMoney } from '../api/client';
-import { useAuth } from '../hooks/useAuth';
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { api, formatMoney } from "../api/client";
+import { useAuth } from "../hooks/useAuth";
+import { FALLBACK_CURRENCY } from "../lib/currencies";
 
 interface ImportPreview {
   accounts: number;
@@ -16,27 +17,30 @@ interface ImportPreview {
 export function ImportPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const currency = user?.settings?.defaultCurrency ?? 'USD';
+  const currency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
   const [file, setFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [runAutomations, setRunAutomations] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{
+    imported: number;
+    skipped: number;
+  } | null>(null);
 
   const onPreview = async (e: FormEvent) => {
     e.preventDefault();
     if (!file) return;
     setLoading(true);
-    setError('');
+    setError("");
     setResult(null);
     try {
       const res = await api.previewImport(file);
       setJobId(res.jobId);
       setPreview(res.preview);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Preview failed');
+      setError(err instanceof Error ? err.message : "Preview failed");
     } finally {
       setLoading(false);
     }
@@ -45,14 +49,14 @@ export function ImportPage() {
   const onConfirm = async () => {
     if (!jobId) return;
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const res = await api.confirmImport(jobId, runAutomations);
       setResult({ imported: res.imported, skipped: res.skipped });
       setPreview(null);
       setJobId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
+      setError(err instanceof Error ? err.message : "Import failed");
     } finally {
       setLoading(false);
     }
@@ -62,8 +66,9 @@ export function ImportPage() {
     <div>
       <h1 className="mb-2 text-lg font-semibold">Import Money Manager</h1>
       <p className="mb-4 text-sm text-zinc-400">
-        Upload <code className="text-zinc-300">money_android.sqlite</code> (email backup) or{' '}
-        <code className="text-zinc-300">.mmbak</code> (device backup — raw SQLite or zip).
+        Upload <code className="text-zinc-300">money_android.sqlite</code>{" "}
+        (email backup) or <code className="text-zinc-300">.mmbak</code> (device
+        backup — raw SQLite or zip).
       </p>
 
       {!result && (
@@ -83,7 +88,7 @@ export function ImportPage() {
             disabled={!file || loading}
             className="w-full rounded-lg bg-zinc-800 py-2 text-sm hover:bg-zinc-700 disabled:opacity-50"
           >
-            {loading ? 'Parsing...' : 'Preview import'}
+            {loading ? "Parsing..." : "Preview import"}
           </button>
         </form>
       )}
@@ -97,7 +102,7 @@ export function ImportPage() {
           <p>Expense: {formatMoney(preview.expenseTotal, currency)}</p>
           {preview.dateFrom && preview.dateTo && (
             <p className="text-zinc-400">
-              {new Date(preview.dateFrom).toLocaleDateString()} –{' '}
+              {new Date(preview.dateFrom).toLocaleDateString()} –{" "}
               {new Date(preview.dateTo).toLocaleDateString()}
             </p>
           )}
@@ -117,7 +122,7 @@ export function ImportPage() {
             disabled={loading}
             className="w-full rounded-lg bg-emerald-600 py-2 font-medium hover:bg-emerald-500 disabled:opacity-50"
           >
-            {loading ? 'Importing...' : 'Confirm import'}
+            {loading ? "Importing..." : "Confirm import"}
           </button>
         </div>
       )}
@@ -129,7 +134,7 @@ export function ImportPage() {
           <p>{result.skipped} duplicates skipped</p>
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="w-full rounded-lg bg-emerald-600 py-2"
           >
             Go to dashboard

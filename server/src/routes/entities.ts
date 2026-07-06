@@ -1,54 +1,106 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { Entity } from '../models/Entity.js';
-import { Obligation } from '../models/Obligation.js';
-import { requireAuth } from '../middleware/auth.js';
-import { stripUserId } from '../middleware/stripUserId.js';
-import { getEntityObligationSummary } from '../services/paymentBackService.js';
+import { Router } from "express";
+import { z } from "zod";
+import { Entity } from "../models/Entity.js";
+import { Obligation } from "../models/Obligation.js";
+import { requireAuth } from "../middleware/auth.js";
+import { stripUserId } from "../middleware/stripUserId.js";
+import { getEntityObligationSummary } from "../services/paymentBackService.js";
+import { getEntityActivity } from "../services/entityActivityService.js";
+import { getLoanBalance } from "../services/loanService.js";
+import { User } from "../models/User.js";
+import { resolveCurrency } from "../lib/currency.js";
 
 const router = Router();
 router.use(requireAuth, stripUserId);
 
 const entitySchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['person', 'charity', 'loan', 'investment', 'other']).optional(),
-  direction: z.enum(['i_owe', 'they_owe_me']),
+  type: z.enum(["person", "charity", "loan", "investment", "other"]).optional(),
+  direction: z.enum(["i_owe", "they_owe_me"]),
+  currency: z.string().optional(),
   notes: z.string().optional(),
 });
 
-router.get('/', async (req, res) => {
-  const entities = await Entity.find({ userId: req.userId }).sort({ name: 1 });
+router.get("/", async (req, res) => {
+  const filter: Record<string, unknown> = { userId: req.userId };
+  const direction = req.query.direction as string | undefined;
+  if (direction === "i_owe" || direction === "they_owe_me") {
+    filter.direction = direction;
+  }
+
+  const entities = await Entity.find(filter).sort({ name: 1 });
   const withSummary = await Promise.all(
     entities.map(async (entity) => {
-      const summary = await getEntityObligationSummary(req.userId, entity._id.toString());
+      const summary = await getEntityObligationSummary(
+        req.userId,
+        entity._id.toString(),
+      );
       return { ...entity.toObject(), obligationSummary: summary };
-    })
+    }),
   );
   res.json(withSummary);
 });
 
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const parsed = entitySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
 
-  const entity = await Entity.create({ ...parsed.data, userId: req.userId });
+  const user = await User.findById(req.userId).select(
+    "settings.defaultCurrency",
+  );
+  const currency = resolveCurrency(
+    parsed.data.currency,
+    undefined,
+    user?.settings?.defaultCurrency ?? "PKR",
+  );
+
+  const entity = await Entity.create({
+    ...parsed.data,
+    currency,
+    userId: req.userId,
+  });
   res.status(201).json(entity);
 });
 
-router.get('/:id/obligations', async (req, res) => {
-  const entity = await Entity.findOne({ _id: req.params.id, userId: req.userId });
+router.get("/:id/activity", async (req, res) => {
+  const entity = await Entity.findOne({
+    _id: req.params.id,
+    userId: req.userId,
+  });
   if (!entity) {
-    res.status(404).json({ error: 'Entity not found' });
+    res.status(404).json({ error: "Entity not found" });
     return;
   }
 
-  const obligations = await Obligation.find({ userId: req.userId, entityId: entity._id })
+  const activity = await getEntityActivity(req.userId, entity);
+  const summary =
+    entity.direction === "i_owe"
+      ? await getEntityObligationSummary(req.userId, entity._id.toString())
+      : { balance: await getLoanBalance(req.userId, entity._id.toString()) };
+
+  res.json({ entity, activity, summary });
+});
+
+router.get("/:id/obligations", async (req, res) => {
+  const entity = await Entity.findOne({
+    _id: req.params.id,
+    userId: req.userId,
+  });
+  if (!entity) {
+    res.status(404).json({ error: "Entity not found" });
+    return;
+  }
+
+  const obligations = await Obligation.find({
+    userId: req.userId,
+    entityId: entity._id,
+  })
     .sort({ createdAt: 1 })
-    .populate('sourceTransactionId', 'amount date')
-    .populate('automationId', 'name percentage');
+    .populate("sourceTransactionId", "amount date")
+    .populate("automationId", "name percentage");
 
   const withRemaining = obligations.map((o) => ({
     ...o.toObject(),
@@ -58,14 +110,20 @@ router.get('/:id/obligations', async (req, res) => {
   res.json(withRemaining);
 });
 
-router.get('/:id/summary', async (req, res) => {
-  const entity = await Entity.findOne({ _id: req.params.id, userId: req.userId });
+router.get("/:id/summary", async (req, res) => {
+  const entity = await Entity.findOne({
+    _id: req.params.id,
+    userId: req.userId,
+  });
   if (!entity) {
-    res.status(404).json({ error: 'Entity not found' });
+    res.status(404).json({ error: "Entity not found" });
     return;
   }
 
-  const summary = await getEntityObligationSummary(req.userId, entity._id.toString());
+  const summary = await getEntityObligationSummary(
+    req.userId,
+    entity._id.toString(),
+  );
   res.json({ entity, ...summary });
 });
 
@@ -73,10 +131,13 @@ const manualObligationSchema = z.object({
   totalDue: z.number().positive(),
 });
 
-router.post('/:id/obligations', async (req, res) => {
-  const entity = await Entity.findOne({ _id: req.params.id, userId: req.userId });
+router.post("/:id/obligations", async (req, res) => {
+  const entity = await Entity.findOne({
+    _id: req.params.id,
+    userId: req.userId,
+  });
   if (!entity) {
-    res.status(404).json({ error: 'Entity not found' });
+    res.status(404).json({ error: "Entity not found" });
     return;
   }
 
@@ -91,7 +152,7 @@ router.post('/:id/obligations', async (req, res) => {
     entityId: entity._id,
     totalDue: Math.round(parsed.data.totalDue),
     paid: 0,
-    status: 'pending',
+    status: "pending",
   });
 
   res.status(201).json(obligation);

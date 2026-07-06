@@ -11,6 +11,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ImportPage } from './pages/ImportPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
+import { LoansPage } from './pages/LoansPage';
+import { EntityLoanDetailPage } from './pages/EntityLoanDetailPage';
+import { AutomationsPage } from './pages/AutomationsPage';
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -49,6 +52,9 @@ export default function App() {
               <Route path="import" element={<ImportPage />} />
               <Route path="accounts" element={<AccountsPage />} />
               <Route path="categories" element={<CategoriesPage />} />
+              <Route path="loans" element={<LoansPage />} />
+              <Route path="loans/:entityId" element={<EntityLoanDetailPage />} />
+              <Route path="automations" element={<AutomationsPage />} />
             </Route>
           </Route>
         </Routes>

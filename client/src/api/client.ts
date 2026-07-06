@@ -1,11 +1,13 @@
-const API = '/api';
+import { FALLBACK_CURRENCY } from "../lib/currencies";
+
+const API = "/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...options,
-    credentials: 'include',
+    credentials: "include",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
@@ -38,14 +40,15 @@ export interface Account {
 export interface Category {
   _id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
 }
 
 export interface Transaction {
   _id: string;
-  type: 'income' | 'expense' | 'transfer';
+  type: "income" | "expense" | "transfer";
   amount: number;
   date: string;
+  currency?: string;
   memo?: string;
   accountId: Account | string;
   categoryId?: Category | string;
@@ -54,97 +57,202 @@ export interface Transaction {
 
 export const api = {
   signup: (data: { email: string; password: string; name?: string }) =>
-    request<User>('/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
+    request<User>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   login: (data: { email: string; password: string }) =>
-    request<User>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+    request<User>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-  logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
 
-  me: () => request<User>('/auth/me'),
+  me: () => request<User>("/auth/me"),
 
   updateSettings: (data: {
     defaultCurrency?: string;
     runAutomationsOnImport?: boolean;
     name?: string;
-  }) => request<User>('/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  }) =>
+    request<User>("/settings", { method: "PATCH", body: JSON.stringify(data) }),
 
   previewImport: async (file: File) => {
     const form = new FormData();
-    form.append('file', file);
+    form.append("file", file);
     const res = await fetch(`${API}/import/preview`, {
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       body: form,
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(typeof body.error === 'string' ? body.error : 'Preview failed');
+      throw new Error(
+        typeof body.error === "string" ? body.error : "Preview failed",
+      );
     }
     return res.json() as Promise<{ jobId: string; preview: ImportPreview }>;
   },
 
   confirmImport: (jobId: string, runAutomationsOnImport?: boolean) =>
-    request<{ imported: number; skipped: number }>('/import/confirm', {
-      method: 'POST',
+    request<{ imported: number; skipped: number }>("/import/confirm", {
+      method: "POST",
       body: JSON.stringify({ jobId, runAutomationsOnImport }),
     }),
 
-  getAccounts: () => request<Account[]>('/accounts'),
+  getAccounts: () => request<Account[]>("/accounts"),
 
-  createAccount: (data: { name: string; balance?: number; currency?: string }) =>
-    request<Account>('/accounts', { method: 'POST', body: JSON.stringify(data) }),
+  createAccount: (data: {
+    name: string;
+    balance?: number;
+    currency?: string;
+  }) =>
+    request<Account>("/accounts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   updateAccount: (
     id: string,
-    data: { name?: string; balance?: number; currency?: string }
-  ) => request<Account>(`/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    data: { name?: string; balance?: number; currency?: string },
+  ) =>
+    request<Account>(`/accounts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 
   deleteAccount: (id: string) =>
-    request<{ ok: boolean }>(`/accounts/${id}`, { method: 'DELETE' }),
+    request<{ ok: boolean }>(`/accounts/${id}`, { method: "DELETE" }),
 
   getCategories: (type?: string) =>
-    request<Category[]>(`/categories${type ? `?type=${type}` : ''}`),
+    request<Category[]>(`/categories${type ? `?type=${type}` : ""}`),
 
-  createCategory: (data: { name: string; type: 'income' | 'expense' }) =>
-    request<Category>('/categories', { method: 'POST', body: JSON.stringify(data) }),
+  createCategory: (data: { name: string; type: "income" | "expense" }) =>
+    request<Category>("/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-  updateCategory: (id: string, data: { name?: string; type?: 'income' | 'expense' }) =>
-    request<Category>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  updateCategory: (
+    id: string,
+    data: { name?: string; type?: "income" | "expense" },
+  ) =>
+    request<Category>(`/categories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 
   deleteCategory: (id: string) =>
-    request<{ ok: boolean }>(`/categories/${id}`, { method: 'DELETE' }),
+    request<{ ok: boolean }>(`/categories/${id}`, { method: "DELETE" }),
 
   getTransactions: (params?: Record<string, string>) => {
-    const qs = params ? `?${new URLSearchParams(params)}` : '';
+    const qs = params ? `?${new URLSearchParams(params)}` : "";
     return request<Transaction[]>(`/transactions${qs}`);
   },
 
   createTransaction: (data: {
-    type: 'income' | 'expense' | 'transfer';
+    type: "income" | "expense" | "transfer";
     amount: number;
     date: string;
     accountId: string;
     categoryId?: string;
     toAccountId?: string;
+    entityId?: string;
+    currency?: string;
     memo?: string;
-  }) => request<Transaction>('/transactions', { method: 'POST', body: JSON.stringify(data) }),
+  }) =>
+    request<Transaction>("/transactions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-  getEntities: () => request<EntityWithSummary[]>('/entities'),
+  getEntities: (direction?: "i_owe" | "they_owe_me") =>
+    request<EntityWithSummary[]>(
+      `/entities${direction ? `?direction=${direction}` : ""}`,
+    ),
 
   createEntity: (data: {
     name: string;
-    direction: 'i_owe' | 'they_owe_me';
+    direction: "i_owe" | "they_owe_me";
+    currency?: string;
     type?: string;
     notes?: string;
-  }) => request<Entity>('/entities', { method: 'POST', body: JSON.stringify(data) }),
+  }) =>
+    request<Entity>("/entities", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getAutomations: () => request<Automation[]>("/automations"),
+
+  createAutomation: (data: {
+    name: string;
+    percentage: number;
+    targetEntityId?: string;
+    newEntityName?: string;
+    entityType?: string;
+    entityCurrency?: string;
+  }) =>
+    request<Automation>("/automations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateAutomation: (
+    id: string,
+    data: { name?: string; percentage?: number; active?: boolean },
+  ) =>
+    request<Automation>(`/automations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteAutomation: (id: string) =>
+    request<{ ok: boolean }>(`/automations/${id}`, { method: "DELETE" }),
+
+  createLoanTransaction: (data: {
+    entityId: string;
+    type:
+      | "loan_given"
+      | "loan_received"
+      | "repayment_made"
+      | "repayment_received";
+    amount: number;
+    memo?: string;
+    accountId?: string;
+  }) =>
+    request<{ loan: LoanTransaction; balance: number }>("/loans", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getLoanBalances: (direction?: "i_owe" | "they_owe_me") =>
+    request<(Entity & { loanBalance: number })[]>(
+      `/loans/balances${direction ? `?direction=${direction}` : ""}`,
+    ),
 
   getEntityObligations: (entityId: string) =>
     request<ObligationWithRemaining[]>(`/entities/${entityId}/obligations`),
 
+  getEntityActivity: (entityId: string) =>
+    request<{
+      entity: Entity;
+      activity: EntityActivityItem[];
+      summary:
+        | {
+            remaining: number;
+            paid: number;
+            totalDue: number;
+            openCount: number;
+          }
+        | { balance: number };
+    }>(`/entities/${entityId}/activity`),
+
   createManualObligation: (entityId: string, totalDue: number) =>
     request<Obligation>(`/entities/${entityId}/obligations`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ totalDue }),
     }),
 
@@ -157,10 +265,13 @@ export const api = {
     transactionId?: string;
     date?: string;
   }) =>
-    request<PaymentBackResult>('/payment-backs', { method: 'POST', body: JSON.stringify(data) }),
+    request<PaymentBackResult>("/payment-backs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   getPaymentBacks: (entityId?: string) => {
-    const qs = entityId ? `?entityId=${entityId}` : '';
+    const qs = entityId ? `?entityId=${entityId}` : "";
     return request<PaymentBackRecord[]>(`/payment-backs${qs}`);
   },
 };
@@ -179,12 +290,50 @@ export interface Entity {
   _id: string;
   name: string;
   type: string;
-  direction: 'i_owe' | 'they_owe_me';
-  obligationSummary?: { totalDue: number; paid: number; remaining: number; openCount: number };
+  direction: "i_owe" | "they_owe_me";
+  currency: string;
+  obligationSummary?: {
+    totalDue: number;
+    paid: number;
+    remaining: number;
+    openCount: number;
+  };
 }
 
 export interface EntityWithSummary extends Entity {
-  obligationSummary: { totalDue: number; paid: number; remaining: number; openCount: number };
+  obligationSummary: {
+    totalDue: number;
+    paid: number;
+    remaining: number;
+    openCount: number;
+  };
+}
+
+export interface Automation {
+  _id: string;
+  name: string;
+  percentage: number;
+  active: boolean;
+  targetEntityId: Entity | string;
+}
+
+export interface LoanTransaction {
+  _id: string;
+  entityId: string;
+  type: string;
+  amount: number;
+  date: string;
+  memo?: string;
+}
+
+export interface EntityActivityItem {
+  _id: string;
+  date: string;
+  type: "add" | "pay";
+  amount: number;
+  currency: string;
+  label: string;
+  memo?: string;
 }
 
 export interface Obligation {
@@ -192,7 +341,7 @@ export interface Obligation {
   entityId: string;
   totalDue: number;
   paid: number;
-  status: 'pending' | 'partial' | 'fulfilled';
+  status: "pending" | "partial" | "fulfilled";
 }
 
 export interface ObligationWithRemaining extends Obligation {
@@ -205,7 +354,11 @@ export interface PaymentBackAllocation {
 }
 
 export interface PaymentBackResult {
-  paymentBack: { _id: string; allocations: PaymentBackAllocation[]; totalAmount: number };
+  paymentBack: {
+    _id: string;
+    allocations: PaymentBackAllocation[];
+    totalAmount: number;
+  };
   allocations: PaymentBackAllocation[];
   unallocated: number;
 }
@@ -218,6 +371,9 @@ export interface PaymentBackRecord {
   allocations: { obligationId: Obligation | string; amountApplied: number }[];
 }
 
-export function formatMoney(cents: number, currency = 'USD') {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100);
+export function formatMoney(cents: number, currency = FALLBACK_CURRENCY) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+  }).format(cents / 100);
 }

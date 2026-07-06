@@ -1,21 +1,31 @@
-import mongoose, { Schema, type InferSchemaType } from 'mongoose';
+import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
 const transactionSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: { type: String, enum: ['income', 'expense', 'transfer'], required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    type: {
+      type: String,
+      enum: ["income", "expense", "transfer"],
+      required: true,
+    },
     amount: { type: Number, required: true },
     date: { type: Date, required: true },
-    accountId: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-    categoryId: { type: Schema.Types.ObjectId, ref: 'Category' },
-    toAccountId: { type: Schema.Types.ObjectId, ref: 'Account' },
-    entityId: { type: Schema.Types.ObjectId, ref: 'Entity' },
+    accountId: { type: Schema.Types.ObjectId, ref: "Account", required: true },
+    categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
+    toAccountId: { type: Schema.Types.ObjectId, ref: "Account" },
+    entityId: { type: Schema.Types.ObjectId, ref: "Entity" },
+    currency: { type: String, default: "PKR" },
     memo: { type: String, trim: true },
     externalUid: { type: String },
-    source: { type: String, enum: ['app', 'money_manager'], default: 'app' },
+    source: { type: String, enum: ["app", "money_manager"], default: "app" },
     importedAt: { type: Date },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 transactionSchema.index({ userId: 1, date: -1 });
@@ -23,9 +33,11 @@ transactionSchema.index(
   { userId: 1, externalUid: 1 },
   {
     unique: true,
-    partialFilterExpression: { externalUid: { $type: 'string' } },
-  }
+    partialFilterExpression: { externalUid: { $type: "string" } },
+  },
 );
 
-export type TransactionDoc = InferSchemaType<typeof transactionSchema> & { _id: mongoose.Types.ObjectId };
-export const Transaction = mongoose.model('Transaction', transactionSchema);
+export type TransactionDoc = InferSchemaType<typeof transactionSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+export const Transaction = mongoose.model("Transaction", transactionSchema);

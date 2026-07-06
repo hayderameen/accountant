@@ -14,6 +14,8 @@ import entityRoutes from './routes/entities.js';
 import paymentBackRoutes from './routes/payment-backs.js';
 import importRoutes from './routes/import.js';
 import settingsRoutes from './routes/settings.js';
+import automationRoutes from './routes/automations.js';
+import loanRoutes from './routes/loans.js';
 
 const app = express();
 const port = Number(process.env.PORT) || 4000;
@@ -39,6 +41,8 @@ app.use('/api/entities', entityRoutes);
 app.use('/api/payment-backs', paymentBackRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/automations', automationRoutes);
+app.use('/api/loans', loanRoutes);
 
 async function start() {
   const uri = process.env.MONGODB_URI;

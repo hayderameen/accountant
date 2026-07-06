@@ -7,6 +7,7 @@ import { PaymentBack } from '../models/PaymentBack.js';
 import { requireAuth } from '../middleware/auth.js';
 import { stripUserId } from '../middleware/stripUserId.js';
 import { recordPaymentBack } from '../services/paymentBackService.js';
+import { resolveCurrency } from '../lib/currency.js';
 
 const router = Router();
 router.use(requireAuth, stripUserId);
@@ -92,6 +93,7 @@ router.post('/', async (req, res) => {
       accountId: data.accountId,
       categoryId: data.categoryId,
       entityId: data.entityId,
+      currency: resolveCurrency(undefined, account.currency, entity.currency),
       memo: data.memo,
     });
     transactionId = transaction._id.toString();

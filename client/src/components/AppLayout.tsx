@@ -32,6 +32,12 @@ export function AppLayout() {
           <Link to="/categories" className="text-zinc-400 hover:text-zinc-200">
             Categories
           </Link>
+          <Link to="/loans" className="text-zinc-400 hover:text-zinc-200">
+            Loans
+          </Link>
+          <Link to="/automations" className="text-zinc-400 hover:text-zinc-200">
+            Automations
+          </Link>
           <Link to="/import" className="text-emerald-400 hover:text-emerald-300">
             Import
           </Link>

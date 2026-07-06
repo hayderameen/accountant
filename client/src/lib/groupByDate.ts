@@ -1,40 +1,32 @@
-import type { Transaction } from '../api/client';
-import { totalsByCurrency, type CurrencyTotals } from './currencyTotals';
+export interface DatedItem {
+  date: string | Date;
+}
 
-export interface DayGroup {
+export interface DayGroup<T> {
   key: string;
   label: string;
-  transactions: Transaction[];
+  items: T[];
 }
 
-export interface MonthGroup {
+export interface MonthGroupGeneric<T> {
   key: string;
   label: string;
-  byCurrency: CurrencyTotals[];
-  days: DayGroup[];
+  days: DayGroup<T>[];
 }
 
-export function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-export function endOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-}
-
-export function monthKey(d: Date): string {
+function monthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function dayKey(d: Date): string {
+function dayKey(d: Date): string {
   return `${monthKey(d)}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function formatMonthLabel(d: Date): string {
+function formatMonthLabel(d: Date): string {
   return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
-export function formatDayLabel(d: Date): string {
+function formatDayLabel(d: Date): string {
   return d.toLocaleDateString(undefined, {
     weekday: 'long',
     day: 'numeric',
@@ -42,40 +34,37 @@ export function formatDayLabel(d: Date): string {
   });
 }
 
-export function groupByMonthAndDay(transactions: Transaction[]): MonthGroup[] {
-  const monthMap = new Map<string, Map<string, Transaction[]>>();
+export function groupByMonthAndDay<T extends DatedItem>(items: T[]): MonthGroupGeneric<T>[] {
+  const monthMap = new Map<string, Map<string, T[]>>();
 
-  for (const t of transactions) {
-    const date = new Date(t.date);
+  for (const item of items) {
+    const date = new Date(item.date);
     const mKey = monthKey(date);
     const dKey = dayKey(date);
 
     if (!monthMap.has(mKey)) monthMap.set(mKey, new Map());
     const dayMap = monthMap.get(mKey)!;
     if (!dayMap.has(dKey)) dayMap.set(dKey, []);
-    dayMap.get(dKey)!.push(t);
+    dayMap.get(dKey)!.push(item);
   }
 
-  const months: MonthGroup[] = [];
+  const months: MonthGroupGeneric<T>[] = [];
 
   for (const [mKey, dayMap] of monthMap) {
     const [year, month] = mKey.split('-').map(Number);
     const monthDate = new Date(year, month - 1, 1);
-    const days: DayGroup[] = [];
-    const monthTransactions: Transaction[] = [];
+    const days: DayGroup<T>[] = [];
 
     const sortedDays = [...dayMap.keys()].sort((a, b) => b.localeCompare(a));
 
     for (const dKey of sortedDays) {
-      const txns = dayMap.get(dKey)!;
-      monthTransactions.push(...txns);
-
+      const dayItems = dayMap.get(dKey)!;
       const [, , day] = dKey.split('-').map(Number);
       const dayDate = new Date(year, month - 1, day);
       days.push({
         key: dKey,
         label: formatDayLabel(dayDate),
-        transactions: txns.sort(
+        items: dayItems.sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         ),
       });
@@ -84,14 +73,9 @@ export function groupByMonthAndDay(transactions: Transaction[]): MonthGroup[] {
     months.push({
       key: mKey,
       label: formatMonthLabel(monthDate),
-      byCurrency: totalsByCurrency(monthTransactions),
       days,
     });
   }
 
   return months.sort((a, b) => b.key.localeCompare(a.key));
-}
-
-export function toApiDate(d: Date): string {
-  return d.toISOString();
 }

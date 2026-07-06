@@ -1,17 +1,19 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { api } from '../api/client';
+import { useState, useEffect, type FormEvent } from "react";
+import { useAuth } from "../hooks/useAuth";
+import { api } from "../api/client";
 
-import { CURRENCIES } from '../lib/currencies';
+import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 
 export function SettingsPage() {
   const { user, refreshUser } = useAuth();
-  const [currency, setCurrency] = useState(user?.settings?.defaultCurrency ?? 'USD');
+  const [currency, setCurrency] = useState(
+    user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY,
+  );
   const [runAutomationsOnImport, setRunAutomationsOnImport] = useState(
-    user?.settings?.runAutomationsOnImport ?? false
+    user?.settings?.runAutomationsOnImport ?? false,
   );
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (user?.settings) {
@@ -23,13 +25,16 @@ export function SettingsPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage('');
+    setMessage("");
     try {
-      await api.updateSettings({ defaultCurrency: currency, runAutomationsOnImport });
+      await api.updateSettings({
+        defaultCurrency: currency,
+        runAutomationsOnImport,
+      });
       await refreshUser();
-      setMessage('Saved');
+      setMessage("Saved");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Failed to save');
+      setMessage(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -40,7 +45,9 @@ export function SettingsPage() {
       <h1 className="mb-4 text-lg font-semibold">Settings</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm text-zinc-400">Default currency</label>
+          <label className="mb-1 block text-sm text-zinc-400">
+            Default currency
+          </label>
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -70,7 +77,7 @@ export function SettingsPage() {
           disabled={saving}
           className="w-full rounded-lg bg-emerald-600 py-2 font-medium hover:bg-emerald-500 disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save'}
+          {saving ? "Saving..." : "Save"}
         </button>
       </form>
     </div>
