@@ -1,0 +1,122 @@
+import { Router } from 'express';
+import mongoose from 'mongoose';
+import { z } from 'zod';
+import { Account } from '../models/Account.js';
+import { Transaction } from '../models/Transaction.js';
+import { requireAuth } from '../middleware/auth.js';
+import { stripUserId } from '../middleware/stripUserId.js';
+import { onIncomeCreated } from '../services/automationEngine.js';
+
+const router = Router();
+router.use(requireAuth, stripUserId);
+
+const transactionSchema = z.object({
+  type: z.enum(['income', 'expense', 'transfer']),
+  amount: z.number().positive(),
+  date: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)),
+  accountId: z.string(),
+  categoryId: z.string().optional(),
+  toAccountId: z.string().optional(),
+  memo: z.string().optional(),
+});
+
+function applyBalanceDelta(type: string, amount: number): number {
+  if (type === 'income') return amount;
+  if (type === 'expense') return -amount;
+  return 0;
+}
+
+router.get('/', async (req, res) => {
+  const filter: Record<string, unknown> = { userId: req.userId };
+
+  if (req.query.accountId) filter.accountId = req.query.accountId;
+  if (req.query.type) filter.type = req.query.type;
+  if (req.query.from || req.query.to) {
+    filter.date = {};
+    if (req.query.from) (filter.date as Record<string, Date>).$gte = new Date(req.query.from as string);
+    if (req.query.to) (filter.date as Record<string, Date>).$lte = new Date(req.query.to as string);
+  }
+
+  const transactions = await Transaction.find(filter)
+    .sort({ date: -1 })
+    .populate('accountId', 'name')
+    .populate('categoryId', 'name type')
+    .populate('toAccountId', 'name')
+    .limit(200);
+
+  res.json(transactions);
+});
+
+router.post('/', async (req, res) => {
+  const parsed = transactionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const data = parsed.data;
+  const amountCents = Math.round(data.amount);
+
+  if (data.type === 'transfer' && !data.toAccountId) {
+    res.status(400).json({ error: 'toAccountId required for transfers' });
+    return;
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const account = await Account.findOne({ _id: data.accountId, userId: req.userId }).session(session);
+    if (!account) {
+      await session.abortTransaction();
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+
+    if (data.type === 'transfer') {
+      const toAccount = await Account.findOne({ _id: data.toAccountId, userId: req.userId }).session(session);
+      if (!toAccount) {
+        await session.abortTransaction();
+        res.status(404).json({ error: 'Destination account not found' });
+        return;
+      }
+      account.balance -= amountCents;
+      toAccount.balance += amountCents;
+      await account.save({ session });
+      await toAccount.save({ session });
+    } else {
+      account.balance += applyBalanceDelta(data.type, amountCents);
+      await account.save({ session });
+    }
+
+    const [transaction] = await Transaction.create(
+      [
+        {
+          userId: req.userId,
+          type: data.type,
+          amount: amountCents,
+          date: new Date(data.date),
+          accountId: data.accountId,
+          categoryId: data.categoryId,
+          toAccountId: data.toAccountId,
+          memo: data.memo,
+        },
+      ],
+      { session }
+    );
+
+    if (data.type === 'income') {
+      await onIncomeCreated(req.userId, transaction._id.toString(), amountCents, 'app', session);
+    }
+
+    await session.commitTransaction();
+    res.status(201).json(transaction);
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+});
+
+export default router;
