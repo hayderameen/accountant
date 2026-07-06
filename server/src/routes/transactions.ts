@@ -9,6 +9,7 @@ import { Entity } from "../models/Entity.js";
 import { User } from "../models/User.js";
 import { resolveCurrency } from "../lib/currency.js";
 import { recordPaymentBack } from "../services/paymentBackService.js";
+import { deleteTransaction } from "../services/transactionDeleteService.js";
 
 const router = Router();
 router.use(requireAuth, stripUserId);
@@ -166,6 +167,17 @@ router.post("/", async (req, res) => {
   }
 
   res.status(201).json(transaction);
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const result = await deleteTransaction(req.userId, req.params.id);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Delete failed";
+    const status = message === "Transaction not found" ? 404 : 400;
+    res.status(status).json({ error: message });
+  }
 });
 
 export default router;

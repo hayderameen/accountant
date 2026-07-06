@@ -48,12 +48,14 @@ interface TransactionItemProps {
   transaction: Transaction;
   fallbackCurrency?: string;
   hideDate?: boolean;
+  onDelete?: (id: string) => void;
 }
 
 export function TransactionItem({
   transaction: t,
   fallbackCurrency = FALLBACK_CURRENCY,
   hideDate,
+  onDelete,
 }: TransactionItemProps) {
   return (
     <div className="flex items-start justify-between gap-3 rounded-lg bg-zinc-900 px-3 py-2.5">
@@ -65,11 +67,23 @@ export function TransactionItem({
           {transactionSubtitle(t, { hideDate })}
         </p>
       </div>
-      <p
-        className={`shrink-0 text-sm font-semibold tabular-nums ${amountStyles[t.type]}`}
-      >
-        {signedAmount(t, fallbackCurrency)}
-      </p>
+      <div className="flex shrink-0 items-center gap-2">
+        <p
+          className={`text-sm font-semibold tabular-nums ${amountStyles[t.type]}`}
+        >
+          {signedAmount(t, fallbackCurrency)}
+        </p>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(t._id)}
+            className="text-xs text-zinc-500 hover:text-red-400"
+            aria-label="Delete transaction"
+          >
+            ✕
+          </button>
+        )}
+      </div>
     </div>
   );
 }

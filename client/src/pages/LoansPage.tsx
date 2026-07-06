@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, formatMoney, type EntityWithSummary } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
@@ -23,6 +23,22 @@ export function LoansPage() {
   const [error, setError] = useState("");
 
   const direction = tab === "pending" ? "i_owe" : "they_owe_me";
+
+  const summaryByCurrency = useMemo(() => {
+    const map = new Map<string, number>();
+    if (tab === "pending") {
+      for (const e of entities) {
+        const c = e.currency ?? FALLBACK_CURRENCY;
+        map.set(c, (map.get(c) ?? 0) + e.obligationSummary.remaining);
+      }
+    } else {
+      for (const e of entities) {
+        const c = e.currency ?? FALLBACK_CURRENCY;
+        map.set(c, (map.get(c) ?? 0) + (balances[e._id] ?? 0));
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [entities, balances, tab]);
 
   const load = async () => {
     const [list, loanBalances] = await Promise.all([
@@ -122,6 +138,24 @@ export function LoansPage() {
           Money to Take Back
         </button>
       </div>
+
+      {summaryByCurrency.length > 0 && (
+        <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2.5">
+          <p className="mb-2 text-sm font-semibold text-zinc-200">
+            {tab === "pending" ? "Total remaining" : "Total owed to you"}
+          </p>
+          <div className="space-y-1">
+            {summaryByCurrency.map(([currency, total]) => (
+              <p
+                key={currency}
+                className={`text-sm font-medium ${tab === "pending" ? "text-rose-300" : "text-emerald-300"}`}
+              >
+                {formatMoney(total, currency)}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={addEntity} className="mb-4 space-y-2">
         <div className="flex gap-2">

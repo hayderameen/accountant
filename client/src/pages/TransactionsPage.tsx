@@ -106,6 +106,7 @@ export function TransactionsPage() {
   const [customTo, setCustomTo] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteError, setDeleteError] = useState("");
 
   const { from, to } = useMemo(
     () => getRange(rangeMode, viewMonth, customFrom, customTo),
@@ -119,6 +120,17 @@ export function TransactionsPage() {
       .then(setTransactions)
       .finally(() => setLoading(false));
   }, [from, to]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this transaction?")) return;
+    setDeleteError("");
+    try {
+      await api.deleteTransaction(id);
+      setTransactions((prev) => prev.filter((t) => t._id !== id));
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Delete failed");
+    }
+  };
 
   const months = useMemo(
     () => groupByMonthAndDay(transactions),
@@ -213,6 +225,10 @@ export function TransactionsPage() {
         </div>
       )}
 
+      {deleteError && (
+        <p className="mb-3 text-sm text-red-400">{deleteError}</p>
+      )}
+
       {loading ? (
         <p className="text-sm text-zinc-500">Loading...</p>
       ) : months.length === 0 ? (
@@ -243,6 +259,7 @@ export function TransactionsPage() {
                           key={t._id}
                           transaction={t}
                           hideDate
+                          onDelete={handleDelete}
                         />
                       ))}
                     </div>

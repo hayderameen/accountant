@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   api,
   formatMoney,
+  type EntityWithLoanBalance,
   type EntityWithSummary,
   type Transaction,
 } from "../api/client";
@@ -11,12 +12,11 @@ import { FALLBACK_CURRENCY } from "../lib/currencies";
 
 export function DashboardPage() {
   const [pendingLoans, setPendingLoans] = useState<EntityWithSummary[]>([]);
-  const [takeBack, setTakeBack] = useState<
-    (EntityWithSummary & { loanBalance?: number })[]
-  >([]);
+  const [takeBack, setTakeBack] = useState<EntityWithLoanBalance[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [deleteError, setDeleteError] = useState("");
 
-  useEffect(() => {
+  const load = () =>
     Promise.all([
       api.getEntities("i_owe"),
       api.getLoanBalances("they_owe_me"),
@@ -26,7 +26,22 @@ export function DashboardPage() {
       setTakeBack(balances);
       setTransactions(txns.slice(0, 5));
     });
+
+  useEffect(() => {
+    load();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this transaction?")) return;
+    setDeleteError("");
+    try {
+      await api.deleteTransaction(id);
+      setTransactions((prev) => prev.filter((t) => t._id !== id));
+      await load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Delete failed");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -96,7 +111,7 @@ export function DashboardPage() {
                 </div>
                 <p className="text-sm text-emerald-300">
                   {formatMoney(
-                    e.loanBalance ?? 0,
+                    e.loanBalance,
                     e.currency ?? FALLBACK_CURRENCY,
                   )}
                 </p>
@@ -108,12 +123,19 @@ export function DashboardPage() {
 
       <section>
         <h2 className="mb-2 text-sm text-zinc-400">Recent</h2>
+        {deleteError && (
+          <p className="mb-2 text-sm text-red-400">{deleteError}</p>
+        )}
         <div className="space-y-2">
           {transactions.length === 0 ? (
             <p className="text-sm text-zinc-500">No transactions yet.</p>
           ) : (
             transactions.map((t) => (
-              <TransactionItem key={t._id} transaction={t} />
+              <TransactionItem
+                key={t._id}
+                transaction={t}
+                onDelete={handleDelete}
+              />
             ))
           )}
         </div>

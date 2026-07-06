@@ -168,6 +168,9 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  deleteTransaction: (id: string) =>
+    request<{ ok: boolean }>(`/transactions/${id}`, { method: "DELETE" }),
+
   getEntities: (direction?: "i_owe" | "they_owe_me") =>
     request<EntityWithSummary[]>(
       `/entities${direction ? `?direction=${direction}` : ""}`,
@@ -229,7 +232,7 @@ export const api = {
     }),
 
   getLoanBalances: (direction?: "i_owe" | "they_owe_me") =>
-    request<(Entity & { loanBalance: number })[]>(
+    request<EntityWithLoanBalance[]>(
       `/loans/balances${direction ? `?direction=${direction}` : ""}`,
     ),
 
@@ -307,6 +310,10 @@ export interface EntityWithSummary extends Entity {
     remaining: number;
     openCount: number;
   };
+}
+
+export interface EntityWithLoanBalance extends Entity {
+  loanBalance: number;
 }
 
 export interface Automation {
