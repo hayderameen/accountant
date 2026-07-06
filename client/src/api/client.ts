@@ -22,6 +22,10 @@ export interface User {
   _id: string;
   email: string;
   name: string;
+  settings?: {
+    defaultCurrency: string;
+    runAutomationsOnImport: boolean;
+  };
 }
 
 export interface Account {
@@ -59,13 +63,57 @@ export const api = {
 
   me: () => request<User>('/auth/me'),
 
+  updateSettings: (data: {
+    defaultCurrency?: string;
+    runAutomationsOnImport?: boolean;
+    name?: string;
+  }) => request<User>('/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  previewImport: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${API}/import/preview`, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(typeof body.error === 'string' ? body.error : 'Preview failed');
+    }
+    return res.json() as Promise<{ jobId: string; preview: ImportPreview }>;
+  },
+
+  confirmImport: (jobId: string, runAutomationsOnImport?: boolean) =>
+    request<{ imported: number; skipped: number }>('/import/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ jobId, runAutomationsOnImport }),
+    }),
+
   getAccounts: () => request<Account[]>('/accounts'),
 
   createAccount: (data: { name: string; balance?: number; currency?: string }) =>
     request<Account>('/accounts', { method: 'POST', body: JSON.stringify(data) }),
 
+  updateAccount: (
+    id: string,
+    data: { name?: string; balance?: number; currency?: string }
+  ) => request<Account>(`/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteAccount: (id: string) =>
+    request<{ ok: boolean }>(`/accounts/${id}`, { method: 'DELETE' }),
+
   getCategories: (type?: string) =>
     request<Category[]>(`/categories${type ? `?type=${type}` : ''}`),
+
+  createCategory: (data: { name: string; type: 'income' | 'expense' }) =>
+    request<Category>('/categories', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateCategory: (id: string, data: { name?: string; type?: 'income' | 'expense' }) =>
+    request<Category>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteCategory: (id: string) =>
+    request<{ ok: boolean }>(`/categories/${id}`, { method: 'DELETE' }),
 
   getTransactions: (params?: Record<string, string>) => {
     const qs = params ? `?${new URLSearchParams(params)}` : '';
@@ -116,6 +164,16 @@ export const api = {
     return request<PaymentBackRecord[]>(`/payment-backs${qs}`);
   },
 };
+
+export interface ImportPreview {
+  accounts: number;
+  categories: number;
+  transactions: number;
+  incomeTotal: number;
+  expenseTotal: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+}
 
 export interface Entity {
   _id: string;

@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api, formatMoney, type Account, type Transaction } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
+import { TransactionItem } from '../components/TransactionItem';
 
 export function DashboardPage() {
+  const { user } = useAuth();
+  const currency = user?.settings?.defaultCurrency ?? 'USD';
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
@@ -18,7 +22,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-2 text-sm text-zinc-400">Total balance</h2>
-        <p className="text-3xl font-semibold">{formatMoney(totalBalance)}</p>
+        <p className="text-3xl font-semibold">{formatMoney(totalBalance, currency)}</p>
       </section>
 
       <section>
@@ -44,12 +48,7 @@ export function DashboardPage() {
             <p className="text-sm text-zinc-500">No transactions yet.</p>
           ) : (
             transactions.map((t) => (
-              <div key={t._id} className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2 text-sm">
-                <span className="capitalize">{t.type}</span>
-                <span className={t.type === 'income' ? 'text-emerald-400' : 'text-zinc-200'}>
-                  {t.type === 'expense' ? '-' : ''}{formatMoney(t.amount)}
-                </span>
-              </div>
+              <TransactionItem key={t._id} transaction={t} currency={currency} />
             ))
           )}
         </div>

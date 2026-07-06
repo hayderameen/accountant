@@ -32,4 +32,32 @@ router.post('/', async (req, res) => {
   res.status(201).json(category);
 });
 
+router.patch('/:id', async (req, res) => {
+  const parsed = categorySchema.partial().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const category = await Category.findOneAndUpdate(
+    { _id: req.params.id, userId: req.userId },
+    parsed.data,
+    { new: true }
+  );
+  if (!category) {
+    res.status(404).json({ error: 'Category not found' });
+    return;
+  }
+  res.json(category);
+});
+
+router.delete('/:id', async (req, res) => {
+  const result = await Category.deleteOne({ _id: req.params.id, userId: req.userId });
+  if (result.deletedCount === 0) {
+    res.status(404).json({ error: 'Category not found' });
+    return;
+  }
+  res.json({ ok: true });
+});
+
 export default router;

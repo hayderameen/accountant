@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Account } from '../models/Account.js';
 import { Transaction } from '../models/Transaction.js';
@@ -37,12 +36,15 @@ router.get('/', async (req, res) => {
     if (req.query.to) (filter.date as Record<string, Date>).$lte = new Date(req.query.to as string);
   }
 
+  const hasDateRange = req.query.from || req.query.to;
+  const limit = hasDateRange ? 5000 : 200;
+
   const transactions = await Transaction.find(filter)
     .sort({ date: -1 })
     .populate('accountId', 'name')
     .populate('categoryId', 'name type')
     .populate('toAccountId', 'name')
-    .limit(200);
+    .limit(limit);
 
   res.json(transactions);
 });
@@ -62,61 +64,43 @@ router.post('/', async (req, res) => {
     return;
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const account = await Account.findOne({ _id: data.accountId, userId: req.userId });
+  if (!account) {
+    res.status(404).json({ error: 'Account not found' });
+    return;
+  }
 
-  try {
-    const account = await Account.findOne({ _id: data.accountId, userId: req.userId }).session(session);
-    if (!account) {
-      await session.abortTransaction();
-      res.status(404).json({ error: 'Account not found' });
+  if (data.type === 'transfer') {
+    const toAccount = await Account.findOne({ _id: data.toAccountId, userId: req.userId });
+    if (!toAccount) {
+      res.status(404).json({ error: 'Destination account not found' });
       return;
     }
-
-    if (data.type === 'transfer') {
-      const toAccount = await Account.findOne({ _id: data.toAccountId, userId: req.userId }).session(session);
-      if (!toAccount) {
-        await session.abortTransaction();
-        res.status(404).json({ error: 'Destination account not found' });
-        return;
-      }
-      account.balance -= amountCents;
-      toAccount.balance += amountCents;
-      await account.save({ session });
-      await toAccount.save({ session });
-    } else {
-      account.balance += applyBalanceDelta(data.type, amountCents);
-      await account.save({ session });
-    }
-
-    const [transaction] = await Transaction.create(
-      [
-        {
-          userId: req.userId,
-          type: data.type,
-          amount: amountCents,
-          date: new Date(data.date),
-          accountId: data.accountId,
-          categoryId: data.categoryId,
-          toAccountId: data.toAccountId,
-          memo: data.memo,
-        },
-      ],
-      { session }
-    );
-
-    if (data.type === 'income') {
-      await onIncomeCreated(req.userId, transaction._id.toString(), amountCents, 'app', session);
-    }
-
-    await session.commitTransaction();
-    res.status(201).json(transaction);
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
+    account.balance -= amountCents;
+    toAccount.balance += amountCents;
+    await account.save();
+    await toAccount.save();
+  } else {
+    account.balance += applyBalanceDelta(data.type, amountCents);
+    await account.save();
   }
+
+  const transaction = await Transaction.create({
+    userId: req.userId,
+    type: data.type,
+    amount: amountCents,
+    date: new Date(data.date),
+    accountId: data.accountId,
+    categoryId: data.categoryId,
+    toAccountId: data.toAccountId,
+    memo: data.memo,
+  });
+
+  if (data.type === 'income') {
+    await onIncomeCreated(req.userId, transaction._id.toString(), amountCents, 'app');
+  }
+
+  res.status(201).json(transaction);
 });
 
 export default router;

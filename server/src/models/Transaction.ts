@@ -19,7 +19,13 @@ const transactionSchema = new Schema(
 );
 
 transactionSchema.index({ userId: 1, date: -1 });
-transactionSchema.index({ userId: 1, externalUid: 1 }, { unique: true, sparse: true });
+transactionSchema.index(
+  { userId: 1, externalUid: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { externalUid: { $type: 'string' } },
+  }
+);
 
 export type TransactionDoc = InferSchemaType<typeof transactionSchema> & { _id: mongoose.Types.ObjectId };
 export const Transaction = mongoose.model('Transaction', transactionSchema);

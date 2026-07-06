@@ -18,7 +18,7 @@ npm run dev
 ```
 
 - Client: http://localhost:5173
-- API: http://localhost:3001
+- API: http://localhost:4000
 
 ## Stack
 

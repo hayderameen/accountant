@@ -12,7 +12,13 @@ const categorySchema = new Schema(
   { timestamps: true }
 );
 
-categorySchema.index({ userId: 1, externalUid: 1 }, { unique: true, sparse: true });
+categorySchema.index(
+  { userId: 1, externalUid: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { externalUid: { $type: 'string' } },
+  }
+);
 
 export type CategoryDoc = InferSchemaType<typeof categorySchema> & { _id: mongoose.Types.ObjectId };
 export const Category = mongoose.model('Category', categorySchema);

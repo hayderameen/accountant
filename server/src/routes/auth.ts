@@ -57,7 +57,12 @@ router.post('/signup', stripUserId, async (req, res) => {
 
   const token = signToken({ sub: user._id.toString(), email: user.email });
   res.cookie(COOKIE_NAME, token, cookieOptions());
-  res.status(201).json({ id: user._id, email: user.email, name: user.name });
+  res.status(201).json({
+    _id: user._id,
+    email: user.email,
+    name: user.name,
+    settings: user.settings,
+  });
 });
 
 router.post('/login', stripUserId, async (req, res) => {
@@ -82,7 +87,12 @@ router.post('/login', stripUserId, async (req, res) => {
 
   const token = signToken({ sub: user._id.toString(), email: user.email });
   res.cookie(COOKIE_NAME, token, cookieOptions());
-  res.json({ id: user._id, email: user.email, name: user.name });
+  res.json({
+    _id: user._id,
+    email: user.email,
+    name: user.name,
+    settings: user.settings,
+  });
 });
 
 router.post('/logout', (_req, res) => {

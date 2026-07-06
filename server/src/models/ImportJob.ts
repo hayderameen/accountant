@@ -5,6 +5,7 @@ const importJobSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     status: { type: String, enum: ['preview', 'completed', 'failed'], default: 'preview' },
     fileName: { type: String },
+    filePath: { type: String },
     preview: { type: Schema.Types.Mixed },
     error: { type: String },
   },

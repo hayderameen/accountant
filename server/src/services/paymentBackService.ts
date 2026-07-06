@@ -1,4 +1,3 @@
-import type { ClientSession } from 'mongoose';
 import { Obligation } from '../models/Obligation.js';
 import { PaymentBack } from '../models/PaymentBack.js';
 
@@ -16,16 +15,13 @@ function obligationStatus(paid: number, totalDue: number): 'pending' | 'partial'
 export async function allocateFifo(
   userId: string,
   entityId: string,
-  totalAmount: number,
-  session: ClientSession
+  totalAmount: number
 ): Promise<AllocationLine[]> {
   const obligations = await Obligation.find({
     userId,
     entityId,
     status: { $in: ['pending', 'partial'] },
-  })
-    .sort({ createdAt: 1 })
-    .session(session);
+  }).sort({ createdAt: 1 });
 
   const allocations: AllocationLine[] = [];
   let remaining = totalAmount;
@@ -39,7 +35,7 @@ export async function allocateFifo(
     const applied = Math.min(remaining, owed);
     obligation.paid += applied;
     obligation.status = obligationStatus(obligation.paid, obligation.totalDue);
-    await obligation.save({ session });
+    await obligation.save();
 
     allocations.push({
       obligationId: obligation._id.toString(),
@@ -57,30 +53,25 @@ export async function recordPaymentBack(input: {
   transactionId: string;
   totalAmount: number;
   date: Date;
-  session: ClientSession;
 }) {
-  const allocations = await allocateFifo(
-    input.userId,
-    input.entityId,
-    input.totalAmount,
-    input.session
-  );
+  const allocations = await allocateFifo(input.userId, input.entityId, input.totalAmount);
 
-  const [paymentBack] = await PaymentBack.create(
-    [
-      {
-        userId: input.userId,
-        entityId: input.entityId,
-        transactionId: input.transactionId,
-        totalAmount: input.totalAmount,
-        date: input.date,
-        allocations,
-      },
-    ],
-    { session: input.session }
-  );
+  const [paymentBack] = await PaymentBack.create([
+    {
+      userId: input.userId,
+      entityId: input.entityId,
+      transactionId: input.transactionId,
+      totalAmount: input.totalAmount,
+      date: input.date,
+      allocations,
+    },
+  ]);
 
-  return { paymentBack, allocations, unallocated: input.totalAmount - allocations.reduce((s, a) => s + a.amountApplied, 0) };
+  return {
+    paymentBack,
+    allocations,
+    unallocated: input.totalAmount - allocations.reduce((s, a) => s + a.amountApplied, 0),
+  };
 }
 
 export async function getEntityObligationSummary(userId: string, entityId: string) {

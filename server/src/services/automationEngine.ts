@@ -1,4 +1,3 @@
-import type { ClientSession } from 'mongoose';
 import { Automation } from '../models/Automation.js';
 import { Obligation } from '../models/Obligation.js';
 import { User } from '../models/User.js';
@@ -11,16 +10,14 @@ export async function onIncomeCreated(
   userId: string,
   transactionId: string,
   amountCents: number,
-  source: string,
-  session: ClientSession
+  source: string
 ) {
   if (source === 'money_manager') {
-    const user = await User.findById(userId).session(session);
+    const user = await User.findById(userId);
     if (!user?.settings?.runAutomationsOnImport) return;
   }
 
-  const rules = await Automation.find({ userId, active: true, trigger: 'on_income' }).session(session);
-
+  const rules = await Automation.find({ userId, active: true, trigger: 'on_income' });
   if (rules.length === 0) return;
 
   const obligations = rules.map((rule) => ({
@@ -33,5 +30,5 @@ export async function onIncomeCreated(
     status: 'pending' as const,
   }));
 
-  await Obligation.insertMany(obligations, { session });
+  await Obligation.insertMany(obligations);
 }

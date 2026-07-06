@@ -12,7 +12,13 @@ const accountSchema = new Schema(
   { timestamps: true }
 );
 
-accountSchema.index({ userId: 1, externalUid: 1 }, { unique: true, sparse: true });
+accountSchema.index(
+  { userId: 1, externalUid: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { externalUid: { $type: 'string' } },
+  }
+);
 
 export type AccountDoc = InferSchemaType<typeof accountSchema> & { _id: mongoose.Types.ObjectId };
 export const Account = mongoose.model('Account', accountSchema);

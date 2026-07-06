@@ -7,6 +7,10 @@ import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { AddPage } from './pages/AddPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { ImportPage } from './pages/ImportPage';
+import { AccountsPage } from './pages/AccountsPage';
+import { CategoriesPage } from './pages/CategoriesPage';
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -41,6 +45,10 @@ export default function App() {
               <Route index element={<DashboardPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="add" element={<AddPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="import" element={<ImportPage />} />
+              <Route path="accounts" element={<AccountsPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
             </Route>
           </Route>
         </Routes>

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Account } from '../models/Account.js';
 import { Entity } from '../models/Entity.js';
@@ -52,82 +51,61 @@ router.post('/', async (req, res) => {
     return;
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let transactionId = data.transactionId;
 
-  try {
-    let transactionId = data.transactionId;
-
-    if (transactionId) {
-      const existing = await Transaction.findOne({
-        _id: transactionId,
-        userId: req.userId,
-        type: 'expense',
-      }).session(session);
-
-      if (!existing) {
-        await session.abortTransaction();
-        res.status(404).json({ error: 'Expense transaction not found' });
-        return;
-      }
-
-      if (existing.amount !== amountCents) {
-        await session.abortTransaction();
-        res.status(400).json({ error: 'Amount must match expense transaction amount' });
-        return;
-      }
-    } else {
-      if (!data.accountId) {
-        await session.abortTransaction();
-        res.status(400).json({ error: 'accountId required when transactionId not provided' });
-        return;
-      }
-
-      const account = await Account.findOne({ _id: data.accountId, userId: req.userId }).session(session);
-      if (!account) {
-        await session.abortTransaction();
-        res.status(404).json({ error: 'Account not found' });
-        return;
-      }
-
-      account.balance -= amountCents;
-      await account.save({ session });
-
-      const [transaction] = await Transaction.create(
-        [
-          {
-            userId: req.userId,
-            type: 'expense',
-            amount: amountCents,
-            date,
-            accountId: data.accountId,
-            categoryId: data.categoryId,
-            entityId: data.entityId,
-            memo: data.memo,
-          },
-        ],
-        { session }
-      );
-      transactionId = transaction._id.toString();
-    }
-
-    const result = await recordPaymentBack({
+  if (transactionId) {
+    const existing = await Transaction.findOne({
+      _id: transactionId,
       userId: req.userId,
-      entityId: data.entityId,
-      transactionId: transactionId!,
-      totalAmount: amountCents,
-      date,
-      session,
+      type: 'expense',
     });
 
-    await session.commitTransaction();
-    res.status(201).json(result);
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
+    if (!existing) {
+      res.status(404).json({ error: 'Expense transaction not found' });
+      return;
+    }
+
+    if (existing.amount !== amountCents) {
+      res.status(400).json({ error: 'Amount must match expense transaction amount' });
+      return;
+    }
+  } else {
+    if (!data.accountId) {
+      res.status(400).json({ error: 'accountId required when transactionId not provided' });
+      return;
+    }
+
+    const account = await Account.findOne({ _id: data.accountId, userId: req.userId });
+    if (!account) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+
+    account.balance -= amountCents;
+    await account.save();
+
+    const transaction = await Transaction.create({
+      userId: req.userId,
+      type: 'expense',
+      amount: amountCents,
+      date,
+      accountId: data.accountId,
+      categoryId: data.categoryId,
+      entityId: data.entityId,
+      memo: data.memo,
+    });
+    transactionId = transaction._id.toString();
   }
+
+  const result = await recordPaymentBack({
+    userId: req.userId,
+    entityId: data.entityId,
+    transactionId: transactionId!,
+    totalAmount: amountCents,
+    date,
+  });
+
+  res.status(201).json(result);
 });
 
 export default router;
