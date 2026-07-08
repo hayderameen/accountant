@@ -38,3 +38,24 @@ export function balanceForCurrency(
 ): number {
   return entity.balancesByCurrency.find((b) => b.currency === currency)?.balance ?? 0;
 }
+
+export function owedCurrenciesFromBalances(
+  balances: CurrencyBalance[]
+): string[] {
+  return balances
+    .filter((b) => b.balance > 0)
+    .map((b) => b.currency)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export function owedCurrenciesFromEntities(
+  entities: { balancesByCurrency: CurrencyBalance[] }[]
+): string[] {
+  const set = new Set<string>();
+  for (const entity of entities) {
+    for (const b of entity.balancesByCurrency) {
+      if (b.balance > 0) set.add(b.currency);
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}

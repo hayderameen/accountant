@@ -5,7 +5,7 @@ import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
-import { balanceForCurrency, flattenEntityBalances } from "../lib/loanTotals";
+import { balanceForCurrency, flattenEntityBalances, owedCurrenciesFromBalances } from "../lib/loanTotals";
 
 type Tab = "pending" | "takeback";
 
@@ -129,7 +129,21 @@ export function LoansPage() {
     }
   };
 
+  useEffect(() => {
+    if (loanAction !== "repayment_received" || !selectedEntity) return;
+    const entity = entities.find((e) => e._id === selectedEntity);
+    if (!entity) return;
+    const owed = owedCurrenciesFromBalances(entity.balancesByCurrency);
+    if (owed.length > 0 && !owed.includes(loanCurrency)) {
+      setLoanCurrency(owed[0]);
+    }
+  }, [loanAction, selectedEntity, entities, loanCurrency]);
+
   const selectedLoanEntity = entities.find((e) => e._id === selectedEntity);
+  const loanCurrencyOptions =
+    loanAction === "repayment_received" && selectedLoanEntity
+      ? owedCurrenciesFromBalances(selectedLoanEntity.balancesByCurrency)
+      : CURRENCIES;
   const repaymentMaxCents =
     loanAction === "repayment_received" && selectedLoanEntity
       ? balanceForCurrency(selectedLoanEntity, loanCurrency)
@@ -277,11 +291,15 @@ export function LoansPage() {
             onChange={(e) => setLoanCurrency(e.target.value)}
             className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
           >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            {loanCurrencyOptions.length === 0 ? (
+              <option value="">No amounts owed</option>
+            ) : (
+              loanCurrencyOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))
+            )}
           </select>
           <input
             type="number"

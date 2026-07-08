@@ -9,7 +9,7 @@ import {
 } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
-import { balanceForCurrency } from "../lib/loanTotals";
+import { balanceForCurrency, owedCurrenciesFromEntities } from "../lib/loanTotals";
 
 type AddType = "expense" | "income" | "transfer" | "repayment";
 
@@ -50,6 +50,15 @@ export function AddPage() {
       loadEntities();
     }
   }, [type, currency]);
+
+  useEffect(() => {
+    if (type !== "repayment") return;
+    const owed = owedCurrenciesFromEntities(takeBack);
+    if (owed.length > 0 && !owed.includes(currency)) {
+      setCurrency(owed[0]);
+      setEntityId("");
+    }
+  }, [type, takeBack, currency]);
 
   useEffect(() => {
     setEntityId("");
@@ -139,6 +148,7 @@ export function AddPage() {
     }
   };
 
+  const repaymentCurrencies = owedCurrenciesFromEntities(takeBack);
   const takeBackForCurrency = takeBack.filter(
     (e) => balanceForCurrency(e, currency) > 0,
   );
@@ -251,11 +261,15 @@ export function AddPage() {
                 }}
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
               >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
+                {repaymentCurrencies.length === 0 ? (
+                  <option value="">No amounts owed</option>
+                ) : (
+                  repaymentCurrencies.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))
+                )}
               </select>
               <select
                 value={entityId}

@@ -14,6 +14,7 @@ import { LoanActivityItem } from "../components/LoanActivityItem";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { groupActivityByMonthAndDay } from "../lib/groupActivity";
+import { owedCurrenciesFromBalances } from "../lib/loanTotals";
 
 function balanceInCurrency(balances: CurrencyBalance[], currency: string): number {
   return balances.find((b) => b.currency === currency)?.balance ?? 0;
@@ -80,6 +81,19 @@ export function EntityLoanDetailPage() {
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [activity]);
+
+  const repayCurrencies = useMemo(
+    () => owedCurrenciesFromBalances(balances),
+    [balances],
+  );
+  const currencyOptions = action === "repay" ? repayCurrencies : CURRENCIES;
+
+  useEffect(() => {
+    if (action !== "repay") return;
+    if (repayCurrencies.length > 0 && !repayCurrencies.includes(currency)) {
+      setCurrency(repayCurrencies[0]);
+    }
+  }, [action, repayCurrencies, currency]);
 
   const owedInCurrency = balanceInCurrency(balances, currency);
   const maxRepayCents = action === "repay" ? owedInCurrency : undefined;
@@ -209,11 +223,15 @@ export function EntityLoanDetailPage() {
           onChange={(e) => setCurrency(e.target.value)}
           className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
         >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
+          {currencyOptions.length === 0 ? (
+            <option value="">No amounts owed</option>
+          ) : (
+            currencyOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))
+          )}
         </select>
         {(action === "repay" || (action === "add" && accounts.length > 0)) && (
           <select
