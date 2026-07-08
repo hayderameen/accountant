@@ -96,6 +96,13 @@ export function AddPage() {
           setError("Select who repaid you");
           return;
         }
+        const owed = balanceForCurrency(selectedTakeBack!, currency);
+        if (amountCents > owed) {
+          setError(
+            `Cannot repay more than ${formatMoney(owed, currency)} owed`,
+          );
+          return;
+        }
         await api.createLoanTransaction({
           entityId,
           type: "repayment_received",
@@ -105,6 +112,15 @@ export function AddPage() {
           memo: memo || undefined,
         });
       } else {
+        if (type === "expense" && entityId && selectedPending) {
+          const remaining = balanceForCurrency(selectedPending, currency);
+          if (amountCents > remaining) {
+            setError(
+              `Cannot pay more than ${formatMoney(remaining, currency)} remaining`,
+            );
+            return;
+          }
+        }
         await api.createTransaction({
           type,
           amount: amountCents,
@@ -129,6 +145,18 @@ export function AddPage() {
   const pendingForCurrency = pendingLoans.filter(
     (e) => balanceForCurrency(e, currency) > 0,
   );
+
+  const selectedTakeBack = takeBack.find((e) => e._id === entityId);
+  const selectedPending = pendingLoans.find((e) => e._id === entityId);
+  const maxRepaymentCents =
+    type === "repayment" && selectedTakeBack
+      ? balanceForCurrency(selectedTakeBack, currency)
+      : undefined;
+  const maxExpenseLoanCents =
+    type === "expense" && selectedPending
+      ? balanceForCurrency(selectedPending, currency)
+      : undefined;
+  const maxAmountCents = maxRepaymentCents ?? maxExpenseLoanCents;
 
   return (
     <div>
@@ -298,12 +326,18 @@ export function AddPage() {
             type="number"
             step="0.01"
             min="0.01"
+            max={maxAmountCents ? maxAmountCents / 100 : undefined}
             placeholder="Amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
             required
           />
+          {maxAmountCents !== undefined && (
+            <p className="text-xs text-zinc-500">
+              Max {formatMoney(maxAmountCents, currency)}
+            </p>
+          )}
 
           <input
             type="text"

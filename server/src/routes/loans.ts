@@ -6,7 +6,7 @@ import { LoanTransaction } from '../models/LoanTransaction.js';
 import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import { stripUserId } from '../middleware/stripUserId.js';
-import { getLoanBalancesByCurrency } from '../services/loanService.js';
+import { getLoanBalancesByCurrency, getLoanBalanceForCurrency, assertRepaymentWithinBalance } from '../services/loanService.js';
 import { normalizeCurrency } from '../lib/currency.js';
 
 const router = Router();
@@ -75,6 +75,25 @@ router.post('/', async (req, res) => {
     entity.currency ?? 'PKR'
   );
 
+  const amountCents = Math.round(data.amount);
+
+  if (data.type === 'repayment_received' || data.type === 'repayment_made') {
+    const owed = await getLoanBalanceForCurrency(
+      req.userId,
+      data.entityId,
+      currency,
+      entity.currency ?? 'PKR'
+    );
+    try {
+      assertRepaymentWithinBalance(amountCents, owed, currency);
+    } catch (err) {
+      res.status(400).json({
+        error: err instanceof Error ? err.message : 'Repayment exceeds amount owed',
+      });
+      return;
+    }
+  }
+
   if (data.accountId) {
     const account = await Account.findOne({ _id: data.accountId, userId: req.userId });
     if (!account) {
@@ -82,9 +101,9 @@ router.post('/', async (req, res) => {
       return;
     }
     if (data.type === 'repayment_received' || data.type === 'loan_received') {
-      account.balance += Math.round(data.amount);
+      account.balance += amountCents;
     } else if (data.type === 'loan_given' || data.type === 'repayment_made') {
-      account.balance -= Math.round(data.amount);
+      account.balance -= amountCents;
     }
     await account.save();
   }
@@ -93,7 +112,7 @@ router.post('/', async (req, res) => {
     userId: req.userId,
     entityId: data.entityId,
     type: data.type,
-    amount: Math.round(data.amount),
+    amount: amountCents,
     currency,
     date: data.date ? new Date(data.date) : new Date(),
     memo: data.memo,

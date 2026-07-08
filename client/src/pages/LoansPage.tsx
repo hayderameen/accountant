@@ -5,7 +5,7 @@ import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
-import { flattenEntityBalances } from "../lib/loanTotals";
+import { balanceForCurrency, flattenEntityBalances } from "../lib/loanTotals";
 
 type Tab = "pending" | "takeback";
 
@@ -107,6 +107,14 @@ export function LoansPage() {
     const cents = Math.round(parseFloat(amount) * 100);
     if (!cents || cents <= 0) return;
     setError("");
+    const entity = entities.find((item) => item._id === selectedEntity);
+    if (loanAction === "repayment_received" && entity) {
+      const owed = balanceForCurrency(entity, loanCurrency);
+      if (cents > owed) {
+        setError(`Cannot repay more than ${(owed / 100).toFixed(2)} ${loanCurrency} owed`);
+        return;
+      }
+    }
     try {
       await api.createLoanTransaction({
         entityId: selectedEntity,
@@ -120,6 +128,12 @@ export function LoansPage() {
       setError(err instanceof Error ? err.message : "Failed");
     }
   };
+
+  const selectedLoanEntity = entities.find((e) => e._id === selectedEntity);
+  const repaymentMaxCents =
+    loanAction === "repayment_received" && selectedLoanEntity
+      ? balanceForCurrency(selectedLoanEntity, loanCurrency)
+      : undefined;
 
   return (
     <div>
@@ -272,11 +286,18 @@ export function LoansPage() {
           <input
             type="number"
             step="0.01"
+            min="0.01"
+            max={repaymentMaxCents ? repaymentMaxCents / 100 : undefined}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount"
             className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
           />
+          {repaymentMaxCents !== undefined && (
+            <p className="text-xs text-zinc-500">
+              Max {(repaymentMaxCents / 100).toFixed(2)} {loanCurrency}
+            </p>
+          )}
           <button
             type="submit"
             className="w-full rounded bg-emerald-600 py-1.5 text-sm"

@@ -8,7 +8,7 @@ import { onIncomeCreated } from "../services/automationEngine.js";
 import { Entity } from "../models/Entity.js";
 import { User } from "../models/User.js";
 import { resolveCurrency } from "../lib/currency.js";
-import { recordPaymentBack } from "../services/paymentBackService.js";
+import { recordPaymentBack, getRemainingObligationForCurrency, assertPaymentWithinRemaining } from "../services/paymentBackService.js";
 import { deleteTransaction } from "../services/transactionDeleteService.js";
 
 const router = Router();
@@ -98,6 +98,33 @@ router.post("/", async (req, res) => {
     user?.settings?.defaultCurrency ?? "PKR",
   );
 
+  if (data.type === "expense" && data.entityId) {
+    const entity = await Entity.findOne({
+      _id: data.entityId,
+      userId: req.userId,
+    });
+    if (!entity) {
+      res.status(400).json({ error: "Entity not found" });
+      return;
+    }
+    if (entity.direction === "i_owe") {
+      const remaining = await getRemainingObligationForCurrency(
+        req.userId,
+        data.entityId,
+        currency,
+        entity.currency ?? "PKR",
+      );
+      try {
+        assertPaymentWithinRemaining(amountCents, remaining, currency);
+      } catch (err) {
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Payment exceeds amount owed",
+        });
+        return;
+      }
+    }
+  }
+
   if (data.type === "transfer") {
     const toAccount = await Account.findOne({
       _id: data.toAccountId,
@@ -149,15 +176,25 @@ router.post("/", async (req, res) => {
     }
 
     if (entity.direction === "i_owe") {
-      await recordPaymentBack({
-        userId: req.userId,
-        entityId: data.entityId,
-        transactionId: transaction._id.toString(),
-        totalAmount: amountCents,
-        currency,
-        date: new Date(data.date),
-        entityDefaultCurrency: entity.currency ?? "PKR",
-      });
+      try {
+        await recordPaymentBack({
+          userId: req.userId,
+          entityId: data.entityId,
+          transactionId: transaction._id.toString(),
+          totalAmount: amountCents,
+          currency,
+          date: new Date(data.date),
+          entityDefaultCurrency: entity.currency ?? "PKR",
+        });
+      } catch (err) {
+        await Transaction.deleteOne({ _id: transaction._id });
+        account.balance -= applyBalanceDelta(data.type, amountCents);
+        await account.save();
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Payment failed",
+        });
+        return;
+      }
     }
   }
 

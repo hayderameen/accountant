@@ -6,7 +6,7 @@ import { Transaction } from '../models/Transaction.js';
 import { PaymentBack } from '../models/PaymentBack.js';
 import { requireAuth } from '../middleware/auth.js';
 import { stripUserId } from '../middleware/stripUserId.js';
-import { recordPaymentBack } from '../services/paymentBackService.js';
+import { recordPaymentBack, getRemainingObligationForCurrency, assertPaymentWithinRemaining } from '../services/paymentBackService.js';
 import { resolveCurrency } from '../lib/currency.js';
 
 const router = Router();
@@ -84,6 +84,34 @@ router.post('/', async (req, res) => {
       return;
     }
 
+    currency = resolveCurrency(undefined, account.currency, entity.currency);
+  }
+
+  try {
+    assertPaymentWithinRemaining(
+      amountCents,
+      await getRemainingObligationForCurrency(
+        req.userId,
+        data.entityId,
+        currency,
+        entity.currency ?? 'PKR'
+      ),
+      currency
+    );
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : 'Payment exceeds amount owed',
+    });
+    return;
+  }
+
+  if (!transactionId) {
+    const account = await Account.findOne({ _id: data.accountId, userId: req.userId });
+    if (!account) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+
     account.balance -= amountCents;
     await account.save();
 
@@ -95,11 +123,10 @@ router.post('/', async (req, res) => {
       accountId: data.accountId,
       categoryId: data.categoryId,
       entityId: data.entityId,
-      currency: resolveCurrency(undefined, account.currency, entity.currency),
+      currency,
       memo: data.memo,
     });
     transactionId = transaction._id.toString();
-    currency = transaction.currency ?? currency;
   }
 
   const result = await recordPaymentBack({

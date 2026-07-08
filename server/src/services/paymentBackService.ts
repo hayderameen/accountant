@@ -72,6 +72,33 @@ export async function getEntityObligationSummary(
   return { totalDue, paid, remaining, openCount, byCurrency: rows };
 }
 
+export async function getRemainingObligationForCurrency(
+  userId: string,
+  entityId: string,
+  currency: string,
+  entityDefaultCurrency = 'PKR'
+): Promise<number> {
+  const target = normalizeCurrency(currency, entityDefaultCurrency);
+  const rows = await getEntityObligationSummariesByCurrency(
+    userId,
+    entityId,
+    entityDefaultCurrency
+  );
+  return rows.find((row) => row.currency === target)?.remaining ?? 0;
+}
+
+export function assertPaymentWithinRemaining(
+  amount: number,
+  remaining: number,
+  currency: string
+): void {
+  if (amount > remaining) {
+    throw new Error(
+      `Payment cannot exceed ${(remaining / 100).toFixed(2)} ${currency} remaining`
+    );
+  }
+}
+
 export async function allocateFifo(
   userId: string,
   entityId: string,
@@ -125,6 +152,14 @@ export async function recordPaymentBack(input: {
 }) {
   const entityDefault = input.entityDefaultCurrency ?? 'PKR';
   const currency = normalizeCurrency(input.currency, entityDefault);
+
+  const remaining = await getRemainingObligationForCurrency(
+    input.userId,
+    input.entityId,
+    currency,
+    entityDefault
+  );
+  assertPaymentWithinRemaining(input.totalAmount, remaining, currency);
 
   const allocations = await allocateFifo(
     input.userId,

@@ -31,6 +31,29 @@ export async function getLoanBalancesByCurrency(
     .sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
+export async function getLoanBalanceForCurrency(
+  userId: string,
+  entityId: string,
+  currency: string,
+  entityDefaultCurrency = 'PKR'
+): Promise<number> {
+  const target = normalizeCurrency(currency, entityDefaultCurrency);
+  const rows = await getLoanBalancesByCurrency(userId, entityId, entityDefaultCurrency);
+  return rows.find((row) => row.currency === target)?.balance ?? 0;
+}
+
+export function assertRepaymentWithinBalance(
+  amount: number,
+  balance: number,
+  currency: string
+): void {
+  if (amount > balance) {
+    throw new Error(
+      `Repayment cannot exceed ${(balance / 100).toFixed(2)} ${currency} owed`
+    );
+  }
+}
+
 /** @deprecated use getLoanBalancesByCurrency */
 export async function getLoanBalance(userId: string, entityId: string): Promise<number> {
   const rows = await getLoanBalancesByCurrency(userId, entityId);
