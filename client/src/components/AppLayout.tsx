@@ -47,20 +47,22 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4">
+      <main className="flex-1 px-4 py-4 pb-16">
         <Outlet />
       </main>
 
-      <nav className="grid grid-cols-3 border-t border-zinc-800 text-sm">
-        <Link to="/" className="py-3 text-center hover:bg-zinc-900">
-          Dashboard
-        </Link>
-        <Link to="/transactions" className="py-3 text-center hover:bg-zinc-900">
-          Transactions
-        </Link>
-        <Link to="/add" className="py-3 text-center hover:bg-zinc-900">
-          Add
-        </Link>
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-zinc-800 bg-zinc-950 text-sm">
+        <div className="mx-auto grid max-w-lg grid-cols-3">
+          <Link to="/" className="py-3 text-center hover:bg-zinc-900">
+            Dashboard
+          </Link>
+          <Link to="/transactions" className="py-3 text-center hover:bg-zinc-900">
+            Transactions
+          </Link>
+          <Link to="/add" className="py-3 text-center hover:bg-zinc-900">
+            Add
+          </Link>
+        </div>
       </nav>
     </div>
   );
