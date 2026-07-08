@@ -148,20 +148,15 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    if (entity.currency !== currency) {
-      res.status(400).json({
-        error: `Transaction currency (${currency}) must match loan currency (${entity.currency})`,
-      });
-      return;
-    }
-
     if (entity.direction === "i_owe") {
       await recordPaymentBack({
         userId: req.userId,
         entityId: data.entityId,
         transactionId: transaction._id.toString(),
         totalAmount: amountCents,
+        currency,
         date: new Date(data.date),
+        entityDefaultCurrency: entity.currency ?? "PKR",
       });
     }
   }

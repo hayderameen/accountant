@@ -3,9 +3,11 @@ import { z } from 'zod';
 import { Account } from '../models/Account.js';
 import { Entity } from '../models/Entity.js';
 import { LoanTransaction } from '../models/LoanTransaction.js';
+import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import { stripUserId } from '../middleware/stripUserId.js';
-import { getLoanBalance } from '../services/loanService.js';
+import { getLoanBalancesByCurrency } from '../services/loanService.js';
+import { normalizeCurrency } from '../lib/currency.js';
 
 const router = Router();
 router.use(requireAuth, stripUserId);
@@ -14,6 +16,7 @@ const loanSchema = z.object({
   entityId: z.string(),
   type: z.enum(['loan_given', 'loan_received', 'repayment_made', 'repayment_received']),
   amount: z.number().positive(),
+  currency: z.string().min(1),
   date: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional(),
   memo: z.string().optional(),
   accountId: z.string().optional(),
@@ -41,7 +44,11 @@ router.get('/balances', async (req, res) => {
   const withBalance = await Promise.all(
     entities.map(async (entity) => ({
       ...entity.toObject(),
-      loanBalance: await getLoanBalance(req.userId, entity._id.toString()),
+      balancesByCurrency: await getLoanBalancesByCurrency(
+        req.userId,
+        entity._id.toString(),
+        entity.currency ?? 'PKR'
+      ),
     }))
   );
 
@@ -62,6 +69,12 @@ router.post('/', async (req, res) => {
     return;
   }
 
+  const user = await User.findById(req.userId).select('settings.defaultCurrency');
+  const currency = normalizeCurrency(
+    data.currency ?? entity.currency ?? user?.settings?.defaultCurrency,
+    entity.currency ?? 'PKR'
+  );
+
   if (data.accountId) {
     const account = await Account.findOne({ _id: data.accountId, userId: req.userId });
     if (!account) {
@@ -81,12 +94,17 @@ router.post('/', async (req, res) => {
     entityId: data.entityId,
     type: data.type,
     amount: Math.round(data.amount),
+    currency,
     date: data.date ? new Date(data.date) : new Date(),
     memo: data.memo,
   });
 
-  const balance = await getLoanBalance(req.userId, data.entityId);
-  res.status(201).json({ loan, balance });
+  const balancesByCurrency = await getLoanBalancesByCurrency(
+    req.userId,
+    data.entityId,
+    entity.currency ?? 'PKR'
+  );
+  res.status(201).json({ loan, balancesByCurrency });
 });
 
 export default router;

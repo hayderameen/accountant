@@ -14,6 +14,7 @@ const paymentBackSchema = new Schema(
     entityId: { type: Schema.Types.ObjectId, ref: 'Entity', required: true, index: true },
     transactionId: { type: Schema.Types.ObjectId, ref: 'Transaction', required: true },
     totalAmount: { type: Number, required: true },
+    currency: { type: String, default: 'PKR' },
     date: { type: Date, required: true },
     allocations: { type: [allocationSchema], required: true },
   },

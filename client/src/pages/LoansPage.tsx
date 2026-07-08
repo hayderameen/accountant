@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { api, formatMoney, type EntityWithSummary } from "../api/client";
+import { api, type EntityWithBalances } from "../api/client";
+import { EntityBalanceLines } from "../components/EntityBalanceLines";
+import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
+import { flattenEntityBalances } from "../lib/loanTotals";
 
 type Tab = "pending" | "takeback";
 
@@ -10,10 +13,13 @@ export function LoansPage() {
   const { user } = useAuth();
   const defaultCurrency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
   const [tab, setTab] = useState<Tab>("pending");
-  const [entities, setEntities] = useState<EntityWithSummary[]>([]);
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
+  const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
+  const [entities, setEntities] = useState<EntityWithBalances[]>([]);
   const [name, setName] = useState("");
   const [entityCurrency, setEntityCurrency] = useState(defaultCurrency);
+  const [obligationCurrency, setObligationCurrency] = useState(defaultCurrency);
+  const [loanCurrency, setLoanCurrency] = useState(defaultCurrency);
   const [amount, setAmount] = useState("");
   const [selectedEntity, setSelectedEntity] = useState("");
   const [obligationEntity, setObligationEntity] = useState("");
@@ -24,39 +30,31 @@ export function LoansPage() {
 
   const direction = tab === "pending" ? "i_owe" : "they_owe_me";
 
-  const summaryByCurrency = useMemo(() => {
-    const map = new Map<string, number>();
-    if (tab === "pending") {
-      for (const e of entities) {
-        const c = e.currency ?? FALLBACK_CURRENCY;
-        map.set(c, (map.get(c) ?? 0) + e.obligationSummary.remaining);
-      }
-    } else {
-      for (const e of entities) {
-        const c = e.currency ?? FALLBACK_CURRENCY;
-        map.set(c, (map.get(c) ?? 0) + (balances[e._id] ?? 0));
-      }
-    }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [entities, balances, tab]);
+  const pendingTotals = useMemo(
+    () => flattenEntityBalances(pendingLoans),
+    [pendingLoans],
+  );
+
+  const takeBackTotals = useMemo(
+    () => flattenEntityBalances(takeBack),
+    [takeBack],
+  );
 
   const load = async () => {
-    const [list, loanBalances] = await Promise.all([
+    const [pending, takeback, list] = await Promise.all([
+      api.getEntities("i_owe"),
+      api.getEntities("they_owe_me"),
       api.getEntities(direction),
-      tab === "takeback"
-        ? api.getLoanBalances("they_owe_me")
-        : Promise.resolve([]),
     ]);
+    setPendingLoans(pending);
+    setTakeBack(takeback);
     setEntities(list);
-    if (tab === "takeback") {
-      setBalances(
-        Object.fromEntries(loanBalances.map((e) => [e._id, e.loanBalance])),
-      );
-    }
   };
 
   useEffect(() => {
     setEntityCurrency(defaultCurrency);
+    setObligationCurrency(defaultCurrency);
+    setLoanCurrency(defaultCurrency);
   }, [defaultCurrency]);
 
   useEffect(() => {
@@ -91,7 +89,11 @@ export function LoansPage() {
     if (!obligationEntity || !cents || cents <= 0) return;
     setError("");
     try {
-      await api.createManualObligation(obligationEntity, cents);
+      await api.createManualObligation(
+        obligationEntity,
+        cents,
+        obligationCurrency,
+      );
       setAmount("");
       await load();
     } catch (err) {
@@ -110,6 +112,7 @@ export function LoansPage() {
         entityId: selectedEntity,
         type: loanAction,
         amount: cents,
+        currency: loanCurrency,
       });
       setAmount("");
       await load();
@@ -139,23 +142,16 @@ export function LoansPage() {
         </button>
       </div>
 
-      {summaryByCurrency.length > 0 && (
-        <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2.5">
-          <p className="mb-2 text-sm font-semibold text-zinc-200">
-            {tab === "pending" ? "Total remaining" : "Total owed to you"}
-          </p>
-          <div className="space-y-1">
-            {summaryByCurrency.map(([currency, total]) => (
-              <p
-                key={currency}
-                className={`text-sm font-medium ${tab === "pending" ? "text-rose-300" : "text-emerald-300"}`}
-              >
-                {formatMoney(total, currency)}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
+      <LoanCurrencySummary
+        title="Total remaining"
+        totals={pendingTotals}
+        variant="owed"
+      />
+      <LoanCurrencySummary
+        title="Total owed to you"
+        totals={takeBackTotals}
+        variant="owedToYou"
+      />
 
       <form onSubmit={addEntity} className="mb-4 space-y-2">
         <div className="flex gap-2">
@@ -174,6 +170,7 @@ export function LoansPage() {
             Add
           </button>
         </div>
+        <p className="text-xs text-zinc-500">Default currency for new entries</p>
         <select
           value={entityCurrency}
           onChange={(e) => setEntityCurrency(e.target.value)}
@@ -202,6 +199,17 @@ export function LoansPage() {
             {entities.map((e) => (
               <option key={e._id} value={e._id}>
                 {e.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={obligationCurrency}
+            onChange={(e) => setObligationCurrency(e.target.value)}
+            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
               </option>
             ))}
           </select>
@@ -250,6 +258,17 @@ export function LoansPage() {
               They repaid (decrease owed)
             </option>
           </select>
+          <select
+            value={loanCurrency}
+            onChange={(e) => setLoanCurrency(e.target.value)}
+            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
           <input
             type="number"
             step="0.01"
@@ -279,29 +298,11 @@ export function LoansPage() {
               to={`/loans/${e._id}`}
               className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
             >
-              <div>
-                <p className="font-medium">{e.name}</p>
-                <p className="text-xs text-zinc-500">
-                  {e.currency ?? FALLBACK_CURRENCY}
-                </p>
-              </div>
-              {tab === "pending" ? (
-                <p className="text-sm text-rose-300">
-                  {formatMoney(
-                    e.obligationSummary.remaining,
-                    e.currency ?? FALLBACK_CURRENCY,
-                  )}{" "}
-                  remaining
-                </p>
-              ) : (
-                <p className="text-sm text-emerald-300">
-                  {formatMoney(
-                    balances[e._id] ?? 0,
-                    e.currency ?? FALLBACK_CURRENCY,
-                  )}{" "}
-                  owed to you
-                </p>
-              )}
+              <p className="font-medium">{e.name}</p>
+              <EntityBalanceLines
+                balances={e.balancesByCurrency}
+                variant={tab === "pending" ? "owed" : "owedToYou"}
+              />
             </Link>
           ))
         )}

@@ -8,6 +8,7 @@ const obligationSchema = new Schema(
     automationId: { type: Schema.Types.ObjectId, ref: 'Automation' },
     totalDue: { type: Number, required: true },
     paid: { type: Number, default: 0 },
+    currency: { type: String, default: 'PKR' },
     status: { type: String, enum: ['pending', 'partial', 'fulfilled'], default: 'pending' },
   },
   { timestamps: true }

@@ -1,29 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   api,
-  formatMoney,
-  type EntityWithLoanBalance,
-  type EntityWithSummary,
+  type EntityWithBalances,
   type Transaction,
 } from "../api/client";
+import { EntityBalanceLines } from "../components/EntityBalanceLines";
+import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { TransactionItem } from "../components/TransactionItem";
-import { FALLBACK_CURRENCY } from "../lib/currencies";
+import { flattenEntityBalances } from "../lib/loanTotals";
 
 export function DashboardPage() {
-  const [pendingLoans, setPendingLoans] = useState<EntityWithSummary[]>([]);
-  const [takeBack, setTakeBack] = useState<EntityWithLoanBalance[]>([]);
+  const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
+  const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [deleteError, setDeleteError] = useState("");
 
   const load = () =>
     Promise.all([
       api.getEntities("i_owe"),
-      api.getLoanBalances("they_owe_me"),
+      api.getEntities("they_owe_me"),
       api.getTransactions(),
-    ]).then(([pending, balances, txns]) => {
+    ]).then(([pending, takeback, txns]) => {
       setPendingLoans(pending);
-      setTakeBack(balances);
+      setTakeBack(takeback);
       setTransactions(txns.slice(0, 5));
     });
 
@@ -43,6 +43,16 @@ export function DashboardPage() {
     }
   };
 
+  const pendingTotals = useMemo(
+    () => flattenEntityBalances(pendingLoans),
+    [pendingLoans],
+  );
+
+  const takeBackTotals = useMemo(
+    () => flattenEntityBalances(takeBack),
+    [takeBack],
+  );
+
   return (
     <div className="space-y-6">
       <section>
@@ -55,6 +65,11 @@ export function DashboardPage() {
             View all
           </Link>
         </div>
+        <LoanCurrencySummary
+          title="Total remaining"
+          totals={pendingTotals}
+          variant="owed"
+        />
         <div className="space-y-2">
           {pendingLoans.length === 0 ? (
             <p className="text-sm text-zinc-500">Nothing owed yet.</p>
@@ -65,18 +80,11 @@ export function DashboardPage() {
                 to={`/loans/${e._id}`}
                 className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
               >
-                <div>
-                  <p className="font-medium">{e.name}</p>
-                  <p className="text-xs text-zinc-500">
-                    {e.currency ?? FALLBACK_CURRENCY}
-                  </p>
-                </div>
-                <p className="text-sm text-rose-300">
-                  {formatMoney(
-                    e.obligationSummary.remaining,
-                    e.currency ?? FALLBACK_CURRENCY,
-                  )}
-                </p>
+                <p className="font-medium">{e.name}</p>
+                <EntityBalanceLines
+                  balances={e.balancesByCurrency}
+                  variant="owed"
+                />
               </Link>
             ))
           )}
@@ -93,6 +101,11 @@ export function DashboardPage() {
             View all
           </Link>
         </div>
+        <LoanCurrencySummary
+          title="Total owed to you"
+          totals={takeBackTotals}
+          variant="owedToYou"
+        />
         <div className="space-y-2">
           {takeBack.length === 0 ? (
             <p className="text-sm text-zinc-500">No one owes you yet.</p>
@@ -103,18 +116,11 @@ export function DashboardPage() {
                 to={`/loans/${e._id}`}
                 className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
               >
-                <div>
-                  <p className="font-medium">{e.name}</p>
-                  <p className="text-xs text-zinc-500">
-                    {e.currency ?? FALLBACK_CURRENCY}
-                  </p>
-                </div>
-                <p className="text-sm text-emerald-300">
-                  {formatMoney(
-                    e.loanBalance,
-                    e.currency ?? FALLBACK_CURRENCY,
-                  )}
-                </p>
+                <p className="font-medium">{e.name}</p>
+                <EntityBalanceLines
+                  balances={e.balancesByCurrency}
+                  variant="owedToYou"
+                />
               </Link>
             ))
           )}

@@ -1,5 +1,4 @@
 import { Automation } from "../models/Automation.js";
-import { Entity } from "../models/Entity.js";
 import { Obligation } from "../models/Obligation.js";
 import { Transaction } from "../models/Transaction.js";
 import { User } from "../models/User.js";
@@ -31,15 +30,13 @@ export async function onIncomeCreated(
 
   const obligations = [];
   for (const rule of rules) {
-    const entity = await Entity.findOne({ _id: rule.targetEntityId, userId });
-    if (!entity || entity.currency !== incomeCurrency) continue;
-
     obligations.push({
       userId,
       entityId: rule.targetEntityId,
       sourceTransactionId: transactionId,
       automationId: rule._id,
       totalDue: toCents((amountCents * rule.percentage) / 100),
+      currency: incomeCurrency,
       paid: 0,
       status: "pending" as const,
     });

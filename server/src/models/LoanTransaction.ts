@@ -6,6 +6,7 @@ const loanTransactionSchema = new Schema(
     entityId: { type: Schema.Types.ObjectId, ref: 'Entity', required: true },
     type: { type: String, enum: ['loan_given', 'loan_received', 'repayment_made', 'repayment_received'], required: true },
     amount: { type: Number, required: true },
+    currency: { type: String, default: 'PKR' },
     date: { type: Date, required: true },
     memo: { type: String, trim: true },
   },

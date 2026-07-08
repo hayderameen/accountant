@@ -53,6 +53,7 @@ router.post('/', async (req, res) => {
   }
 
   let transactionId = data.transactionId;
+  let currency = entity.currency ?? 'PKR';
 
   if (transactionId) {
     const existing = await Transaction.findOne({
@@ -70,6 +71,7 @@ router.post('/', async (req, res) => {
       res.status(400).json({ error: 'Amount must match expense transaction amount' });
       return;
     }
+    currency = existing.currency ?? currency;
   } else {
     if (!data.accountId) {
       res.status(400).json({ error: 'accountId required when transactionId not provided' });
@@ -97,6 +99,7 @@ router.post('/', async (req, res) => {
       memo: data.memo,
     });
     transactionId = transaction._id.toString();
+    currency = transaction.currency ?? currency;
   }
 
   const result = await recordPaymentBack({
@@ -104,7 +107,9 @@ router.post('/', async (req, res) => {
     entityId: data.entityId,
     transactionId: transactionId!,
     totalAmount: amountCents,
+    currency,
     date,
+    entityDefaultCurrency: entity.currency ?? 'PKR',
   });
 
   res.status(201).json(result);

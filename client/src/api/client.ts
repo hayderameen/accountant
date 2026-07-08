@@ -172,7 +172,7 @@ export const api = {
     request<{ ok: boolean }>(`/transactions/${id}`, { method: "DELETE" }),
 
   getEntities: (direction?: "i_owe" | "they_owe_me") =>
-    request<EntityWithSummary[]>(
+    request<EntityWithBalances[]>(
       `/entities${direction ? `?direction=${direction}` : ""}`,
     ),
 
@@ -223,16 +223,20 @@ export const api = {
       | "repayment_made"
       | "repayment_received";
     amount: number;
+    currency?: string;
     memo?: string;
     accountId?: string;
   }) =>
-    request<{ loan: LoanTransaction; balance: number }>("/loans", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    request<{ loan: LoanTransaction; balancesByCurrency: CurrencyBalance[] }>(
+      "/loans",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
 
   getLoanBalances: (direction?: "i_owe" | "they_owe_me") =>
-    request<EntityWithLoanBalance[]>(
+    request<EntityWithBalances[]>(
       `/loans/balances${direction ? `?direction=${direction}` : ""}`,
     ),
 
@@ -243,20 +247,22 @@ export const api = {
     request<{
       entity: Entity;
       activity: EntityActivityItem[];
-      summary:
-        | {
-            remaining: number;
-            paid: number;
-            totalDue: number;
-            openCount: number;
-          }
-        | { balance: number };
+      summary: {
+        byCurrency: Array<
+          | { currency: string; remaining: number; totalDue: number; paid: number; openCount: number }
+          | { currency: string; balance: number }
+        >;
+      };
     }>(`/entities/${entityId}/activity`),
 
-  createManualObligation: (entityId: string, totalDue: number) =>
+  createManualObligation: (
+    entityId: string,
+    totalDue: number,
+    currency?: string,
+  ) =>
     request<Obligation>(`/entities/${entityId}/obligations`, {
       method: "POST",
-      body: JSON.stringify({ totalDue }),
+      body: JSON.stringify({ totalDue, currency }),
     }),
 
   createPaymentBack: (data: {
@@ -289,12 +295,26 @@ export interface ImportPreview {
   dateTo: string | null;
 }
 
+export interface CurrencyBalance {
+  currency: string;
+  balance: number;
+}
+
 export interface Entity {
   _id: string;
   name: string;
   type: string;
   direction: "i_owe" | "they_owe_me";
   currency: string;
+  balancesByCurrency?: CurrencyBalance[];
+}
+
+export interface EntityWithBalances extends Entity {
+  balancesByCurrency: CurrencyBalance[];
+}
+
+/** @deprecated use EntityWithBalances */
+export interface EntityWithSummary extends EntityWithBalances {
   obligationSummary?: {
     totalDue: number;
     paid: number;
@@ -303,17 +323,9 @@ export interface Entity {
   };
 }
 
-export interface EntityWithSummary extends Entity {
-  obligationSummary: {
-    totalDue: number;
-    paid: number;
-    remaining: number;
-    openCount: number;
-  };
-}
-
-export interface EntityWithLoanBalance extends Entity {
-  loanBalance: number;
+/** @deprecated use EntityWithBalances */
+export interface EntityWithLoanBalance extends EntityWithBalances {
+  loanBalance?: number;
 }
 
 export interface Automation {

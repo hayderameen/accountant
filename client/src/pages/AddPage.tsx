@@ -2,12 +2,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   api,
+  formatMoney,
   type Account,
   type Category,
-  type EntityWithSummary,
+  type EntityWithBalances,
 } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
+import { balanceForCurrency } from "../lib/loanTotals";
 
 type AddType = "expense" | "income" | "transfer" | "repayment";
 
@@ -25,8 +27,8 @@ export function AddPage() {
   const [memo, setMemo] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
   const [entityId, setEntityId] = useState("");
-  const [pendingLoans, setPendingLoans] = useState<EntityWithSummary[]>([]);
-  const [takeBack, setTakeBack] = useState<EntityWithSummary[]>([]);
+  const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
+  const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
   const [newAccountName, setNewAccountName] = useState("");
   const [error, setError] = useState("");
 
@@ -34,10 +36,20 @@ export function AddPage() {
     setCurrency(defaultCurrency);
   }, [defaultCurrency]);
 
-  useEffect(() => {
+  const loadEntities = () => {
     api.getEntities("i_owe").then(setPendingLoans);
     api.getEntities("they_owe_me").then(setTakeBack);
+  };
+
+  useEffect(() => {
+    loadEntities();
   }, []);
+
+  useEffect(() => {
+    if (type === "expense" || type === "repayment") {
+      loadEntities();
+    }
+  }, [type, currency]);
 
   useEffect(() => {
     setEntityId("");
@@ -88,6 +100,7 @@ export function AddPage() {
           entityId,
           type: "repayment_received",
           amount: amountCents,
+          currency,
           accountId,
           memo: memo || undefined,
         });
@@ -110,7 +123,12 @@ export function AddPage() {
     }
   };
 
-  const takeBackForCurrency = takeBack.filter((e) => e.currency === currency);
+  const takeBackForCurrency = takeBack.filter(
+    (e) => balanceForCurrency(e, currency) > 0,
+  );
+  const pendingForCurrency = pendingLoans.filter(
+    (e) => balanceForCurrency(e, currency) > 0,
+  );
 
   return (
     <div>
@@ -220,7 +238,8 @@ export function AddPage() {
                 <option value="">Who repaid you?</option>
                 {takeBackForCurrency.map((e) => (
                   <option key={e._id} value={e._id}>
-                    {e.name}
+                    {e.name} (
+                    {formatMoney(balanceForCurrency(e, currency), currency)} owed)
                   </option>
                 ))}
               </select>
@@ -242,31 +261,6 @@ export function AddPage() {
             </select>
           )}
 
-          {type === "expense" &&
-            pendingLoans.filter((e) => e.currency === currency).length > 0 && (
-              <select
-                value={entityId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setEntityId(id);
-                  const entity = pendingLoans.find((x) => x._id === id);
-                  if (entity?.currency) setCurrency(entity.currency);
-                }}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-              >
-                <option value="">Link to pending loan (optional)</option>
-                {pendingLoans
-                  .filter((e) => e.currency === currency)
-                  .map((e) => (
-                    <option key={e._id} value={e._id}>
-                      {e.name} (
-                      {((e.obligationSummary.remaining || 0) / 100).toFixed(2)}{" "}
-                      {e.currency} left)
-                    </option>
-                  ))}
-              </select>
-            )}
-
           {type !== "repayment" && (
             <select
               value={currency}
@@ -279,6 +273,22 @@ export function AddPage() {
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {type === "expense" && pendingForCurrency.length > 0 && (
+            <select
+              value={entityId}
+              onChange={(e) => setEntityId(e.target.value)}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+            >
+              <option value="">Link to pending loan (optional)</option>
+              {pendingForCurrency.map((e) => (
+                <option key={e._id} value={e._id}>
+                  {e.name} (
+                  {formatMoney(balanceForCurrency(e, currency), currency)} left)
                 </option>
               ))}
             </select>

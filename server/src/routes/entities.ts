@@ -4,11 +4,11 @@ import { Entity } from "../models/Entity.js";
 import { Obligation } from "../models/Obligation.js";
 import { requireAuth } from "../middleware/auth.js";
 import { stripUserId } from "../middleware/stripUserId.js";
-import { getEntityObligationSummary } from "../services/paymentBackService.js";
+import { getEntityObligationSummariesByCurrency } from "../services/paymentBackService.js";
 import { getEntityActivity } from "../services/entityActivityService.js";
-import { getLoanBalance } from "../services/loanService.js";
+import { getLoanBalancesByCurrency } from "../services/loanService.js";
 import { User } from "../models/User.js";
-import { resolveCurrency } from "../lib/currency.js";
+import { resolveCurrency, normalizeCurrency } from "../lib/currency.js";
 
 const router = Router();
 router.use(requireAuth, stripUserId);
@@ -31,11 +31,26 @@ router.get("/", async (req, res) => {
   const entities = await Entity.find(filter).sort({ name: 1 });
   const withSummary = await Promise.all(
     entities.map(async (entity) => {
-      const summary = await getEntityObligationSummary(
+      if (entity.direction === "i_owe") {
+        const byCurrency = await getEntityObligationSummariesByCurrency(
+          req.userId,
+          entity._id.toString(),
+          entity.currency ?? "PKR",
+        );
+        return {
+          ...entity.toObject(),
+          balancesByCurrency: byCurrency.map((row) => ({
+            currency: row.currency,
+            balance: row.remaining,
+          })),
+        };
+      }
+      const byCurrency = await getLoanBalancesByCurrency(
         req.userId,
         entity._id.toString(),
+        entity.currency ?? "PKR",
       );
-      return { ...entity.toObject(), obligationSummary: summary };
+      return { ...entity.toObject(), balancesByCurrency: byCurrency };
     }),
   );
   res.json(withSummary);
@@ -78,8 +93,20 @@ router.get("/:id/activity", async (req, res) => {
   const activity = await getEntityActivity(req.userId, entity);
   const summary =
     entity.direction === "i_owe"
-      ? await getEntityObligationSummary(req.userId, entity._id.toString())
-      : { balance: await getLoanBalance(req.userId, entity._id.toString()) };
+      ? {
+          byCurrency: await getEntityObligationSummariesByCurrency(
+            req.userId,
+            entity._id.toString(),
+            entity.currency ?? "PKR",
+          ),
+        }
+      : {
+          byCurrency: await getLoanBalancesByCurrency(
+            req.userId,
+            entity._id.toString(),
+            entity.currency ?? "PKR",
+          ),
+        };
 
   res.json({ entity, activity, summary });
 });
@@ -120,15 +147,17 @@ router.get("/:id/summary", async (req, res) => {
     return;
   }
 
-  const summary = await getEntityObligationSummary(
+  const summary = await getEntityObligationSummariesByCurrency(
     req.userId,
     entity._id.toString(),
+    entity.currency ?? "PKR",
   );
-  res.json({ entity, ...summary });
+  res.json({ entity, byCurrency: summary });
 });
 
 const manualObligationSchema = z.object({
   totalDue: z.number().positive(),
+  currency: z.string().optional(),
 });
 
 router.post("/:id/obligations", async (req, res) => {
@@ -147,10 +176,17 @@ router.post("/:id/obligations", async (req, res) => {
     return;
   }
 
+  const user = await User.findById(req.userId).select("settings.defaultCurrency");
+  const currency = normalizeCurrency(
+    parsed.data.currency ?? entity.currency ?? user?.settings?.defaultCurrency,
+    entity.currency ?? "PKR",
+  );
+
   const obligation = await Obligation.create({
     userId: req.userId,
     entityId: entity._id,
     totalDue: Math.round(parsed.data.totalDue),
+    currency,
     paid: 0,
     status: "pending",
   });
