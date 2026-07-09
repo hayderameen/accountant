@@ -1,31 +1,39 @@
-import { formatMoney } from '../api/client';
-import type { CurrencyAmount } from '../lib/loanTotals';
+import { formatMoney } from "../api/client";
+import type { CurrencyAmount } from "../lib/loanTotals";
 
 interface LoanCurrencySummaryProps {
   title: string;
   totals: CurrencyAmount[];
-  variant: 'owed' | 'owedToYou';
+  variant: "owed" | "owedToYou";
 }
 
-export function LoanCurrencySummary({
-  title,
-  totals,
-  variant,
-}: LoanCurrencySummaryProps) {
+export function LoanCurrencySummary({ title, totals, variant }: LoanCurrencySummaryProps) {
   if (totals.length === 0) return null;
-
-  const color = variant === 'owed' ? 'text-rose-300' : 'text-emerald-300';
+  const color = variant === "owed" ? "var(--color-red)" : "var(--color-green)";
 
   return (
-    <div className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2.5">
-      <p className="mb-2 text-sm font-semibold text-zinc-200">{title}</p>
-      <div className="space-y-2">
+    <div className="panel mb-3 px-4 py-3.5">
+      <p className="section-label mb-3">{title}</p>
+      <div className="space-y-2.5">
         {totals.map(({ currency, amount }) => (
-          <div key={currency}>
-            <p className="text-xs font-medium text-zinc-500">{currency}</p>
-            <p className={`text-sm font-medium ${color}`}>
+          <div key={currency} className="flex items-baseline justify-between gap-3">
+            <span
+              style={{
+                fontSize: "0.73rem",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "var(--color-mist)",
+              }}
+            >
+              {currency}
+            </span>
+            <span
+              className="tabular-nums"
+              style={{ fontSize: "1.05rem", fontWeight: 700, color }}
+            >
               {formatMoney(amount, currency)}
-            </p>
+            </span>
           </div>
         ))}
       </div>

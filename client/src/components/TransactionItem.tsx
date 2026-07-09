@@ -27,16 +27,13 @@ export function transactionSubtitle(
   return parts.join(" · ");
 }
 
-const amountStyles = {
-  income: "text-emerald-400",
-  expense: "text-rose-400",
-  transfer: "text-sky-400",
+const amountClass = {
+  income:   "amount-in",
+  expense:  "amount-out",
+  transfer: "amount-transfer",
 } as const;
 
-export function signedAmount(
-  t: Transaction,
-  fallbackCurrency = FALLBACK_CURRENCY,
-): string {
+export function signedAmount(t: Transaction, fallbackCurrency = FALLBACK_CURRENCY): string {
   const currency = transactionCurrency(t, fallbackCurrency);
   const value = formatMoney(t.amount, currency);
   if (t.type === "income") return `+${value}`;
@@ -57,19 +54,30 @@ export function TransactionItem({
   hideDate,
   onDelete,
 }: TransactionItemProps) {
+  const subtitle = transactionSubtitle(t, { hideDate });
+
   return (
-    <div className="flex items-start justify-between gap-3 rounded-lg bg-zinc-900 px-3 py-2.5">
+    <div className="list-row items-center">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-zinc-100">
+        <p
+          className="truncate"
+          style={{ fontWeight: 500, color: "var(--color-paper)" }}
+        >
           {transactionTitle(t)}
         </p>
-        <p className="mt-0.5 text-xs text-zinc-500">
-          {transactionSubtitle(t, { hideDate })}
-        </p>
+        {subtitle && (
+          <p
+            className="mt-0.5 truncate"
+            style={{ fontSize: "0.78rem", color: "var(--color-mist)" }}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <p
-          className={`text-sm font-semibold tabular-nums ${amountStyles[t.type]}`}
+          className={`tabular-nums ${amountClass[t.type]}`}
+          style={{ fontSize: "0.93rem", fontWeight: 600 }}
         >
           {signedAmount(t, fallbackCurrency)}
         </p>
@@ -77,8 +85,22 @@ export function TransactionItem({
           <button
             type="button"
             onClick={() => onDelete(t._id)}
-            className="text-xs text-zinc-500 hover:text-red-400"
             aria-label="Delete transaction"
+            style={{
+              padding: "2px 6px",
+              borderRadius: 5,
+              fontSize: "0.72rem",
+              color: "var(--color-mist)",
+              transition: "color 140ms ease, background 140ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-red)";
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(248,113,113,0.1)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-mist)";
+              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+            }}
           >
             ✕
           </button>

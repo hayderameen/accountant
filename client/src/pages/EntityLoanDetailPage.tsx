@@ -165,25 +165,25 @@ export function EntityLoanDetailPage() {
     }
   };
 
-  if (loading) return <p className="text-sm text-zinc-500">Loading...</p>;
-  if (!entity) return <p className="text-sm text-zinc-500">Not found.</p>;
+  if (loading) return <p className="text-sm text-[var(--color-mist)]">Loading...</p>;
+  if (!entity) return <p className="text-sm text-[var(--color-mist)]">Not found.</p>;
 
   const isPending = entity.direction === "i_owe";
 
   return (
-    <div>
+    <div className="fade-up">
       <button
         type="button"
         onClick={() => navigate("/loans")}
-        className="mb-4 text-sm text-zinc-400 hover:text-zinc-200"
+        className="btn-ghost mb-4"
       >
         ← Back to loans
       </button>
 
       <div className="mb-4 flex items-start justify-between gap-3">
-        <h1 className="text-lg font-semibold">{entity.name}</h1>
+        <h1 className="page-title">{entity.name}</h1>
         <div className="text-right">
-          <p className="mb-1 text-xs text-zinc-500">
+          <p className="section-label mb-1">
             {isPending ? "Remaining" : "Owed to you"}
           </p>
           <EntityBalanceLines
@@ -193,27 +193,20 @@ export function EntityLoanDetailPage() {
         </div>
       </div>
 
-      <form
-        onSubmit={onSubmit}
-        className="mb-4 space-y-2 rounded-lg border border-zinc-800 bg-zinc-900 p-3"
-      >
-        <p className="text-sm font-medium text-zinc-300">Record activity</p>
-        <div className="grid grid-cols-2 gap-2">
+      <form onSubmit={onSubmit} className="panel mb-4 space-y-2 p-3">
+        <p className="section-label">Record activity</p>
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setAction("repay")}
-            className={`rounded-lg py-2 text-sm ${
-              action === "repay" ? "bg-emerald-600" : "bg-zinc-800"
-            }`}
+            className={`chip ${action === "repay" ? "chip-active" : "chip-idle"}`}
           >
             {isPending ? "Pay back" : "Repayment"}
           </button>
           <button
             type="button"
             onClick={() => setAction("add")}
-            className={`rounded-lg py-2 text-sm ${
-              action === "add" ? "bg-emerald-600" : "bg-zinc-800"
-            }`}
+            className={`chip ${action === "add" ? "chip-active" : "chip-idle"}`}
           >
             {isPending ? "Add owed" : "Add loan"}
           </button>
@@ -221,7 +214,7 @@ export function EntityLoanDetailPage() {
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="field text-sm"
         >
           {currencyOptions.length === 0 ? (
             <option value="">No amounts owed</option>
@@ -237,7 +230,7 @@ export function EntityLoanDetailPage() {
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className="field text-sm"
             required={action === "repay"}
           >
             <option value="">
@@ -258,11 +251,11 @@ export function EntityLoanDetailPage() {
           placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="field text-sm"
           required
         />
         {maxRepayCents !== undefined && maxRepayCents > 0 && (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-[var(--color-mist)]">
             Max {formatMoney(maxRepayCents, currency)}
           </p>
         )}
@@ -271,28 +264,28 @@ export function EntityLoanDetailPage() {
           placeholder="Memo (optional)"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="field text-sm"
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
-        >
+        {error && (
+          <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+            {error}
+          </div>
+        )}
+        <button type="submit" disabled={submitting} className="btn-primary text-sm">
           {submitting ? "Saving..." : "Save"}
         </button>
       </form>
 
       {activityTotals.length > 0 && (
-        <div className="mb-4 rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-3 py-2.5">
-          <p className="mb-2 text-sm font-semibold text-emerald-200">All time</p>
+        <div className="panel-accent mb-4 px-3 py-2.5">
+          <p className="section-label mb-2 text-[var(--color-sage-bright)]">All time</p>
           <div className="space-y-2">
             {activityTotals.map(([c, { added, paid }]) => (
               <div key={c}>
-                <p className="text-xs font-medium text-zinc-500">{c}</p>
+                <p className="section-label">{c}</p>
                 <div className="flex flex-wrap gap-x-4 text-sm">
-                  <span className="text-rose-400">+{formatMoney(added, c)}</span>
-                  <span className="text-emerald-400">-{formatMoney(paid, c)}</span>
+                  <span className="amount-out">+{formatMoney(added, c)}</span>
+                  <span className="amount-in">-{formatMoney(paid, c)}</span>
                 </div>
               </div>
             ))}
@@ -301,7 +294,7 @@ export function EntityLoanDetailPage() {
       )}
 
       {months.length === 0 ? (
-        <p className="text-sm text-zinc-500">No activity yet.</p>
+        <p className="text-sm text-[var(--color-mist)]">No activity yet.</p>
       ) : (
         <div className="space-y-6">
           {months.map((month) => (
@@ -310,7 +303,7 @@ export function EntityLoanDetailPage() {
               <div className="space-y-4">
                 {month.days.map((day) => (
                   <div key={day.key}>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    <p className="section-label mb-2">
                       {day.label}
                     </p>
                     <div className="space-y-2">

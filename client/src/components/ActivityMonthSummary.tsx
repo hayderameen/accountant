@@ -1,5 +1,5 @@
-import { formatMoney } from '../api/client';
-import type { ActivityCurrencyTotals } from '../lib/groupActivity';
+import { formatMoney } from "../api/client";
+import type { ActivityCurrencyTotals } from "../lib/groupActivity";
 
 export function ActivityMonthSummary({
   title,
@@ -11,15 +11,35 @@ export function ActivityMonthSummary({
   if (byCurrency.length === 0) return null;
 
   return (
-    <div className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2.5">
-      <p className="mb-2 text-sm font-semibold text-zinc-200">{title}</p>
-      <div className="space-y-2">
+    <div className="panel mb-3 px-4 py-3.5">
+      <p
+        className="mb-3"
+        style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--color-paper)" }}
+      >
+        {title}
+      </p>
+      <div className="space-y-2.5">
         {byCurrency.map(({ currency, added, paid }) => (
           <div key={currency}>
-            <p className="text-xs font-medium text-zinc-500">{currency}</p>
-            <div className="flex flex-wrap gap-x-4 text-sm">
-              <span className="text-rose-400">+{formatMoney(added, currency)}</span>
-              <span className="text-emerald-400">-{formatMoney(paid, currency)}</span>
+            <p
+              style={{
+                fontSize: "0.68rem",
+                fontWeight: 600,
+                letterSpacing: "0.09em",
+                textTransform: "uppercase",
+                color: "var(--color-mist)",
+                marginBottom: "0.25rem",
+              }}
+            >
+              {currency}
+            </p>
+            <div className="flex flex-wrap gap-x-5 tabular-nums" style={{ fontSize: "0.88rem" }}>
+              <span className="amount-out" style={{ fontWeight: 600 }}>
+                +{formatMoney(added, currency)}
+              </span>
+              <span className="amount-in" style={{ fontWeight: 600 }}>
+                −{formatMoney(paid, currency)}
+              </span>
             </div>
           </div>
         ))}

@@ -80,21 +80,18 @@ export function AutomationsPage() {
   };
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Automations</h1>
-      <p className="mb-4 text-sm text-zinc-400">
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Automations</h1>
+      <p className="mb-4 text-sm text-[var(--color-mist)]">
         On each income, create a pending loan obligation as a % of that income.
       </p>
 
-      <form
-        onSubmit={onSubmit}
-        className="mb-6 space-y-3 rounded-lg bg-zinc-900 p-3"
-      >
+      <form onSubmit={onSubmit} className="panel mb-6 space-y-3 p-3">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Rule name e.g. Charity 10%"
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="field text-sm"
         />
         <input
           type="number"
@@ -104,21 +101,21 @@ export function AutomationsPage() {
           value={percentage}
           onChange={(e) => setPercentage(e.target.value)}
           placeholder="Percentage of income"
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="field text-sm"
         />
 
-        <div className="flex gap-2 text-sm">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setUseNewEntity(true)}
-            className={`flex-1 rounded py-1.5 ${useNewEntity ? "bg-emerald-600" : "bg-zinc-800"}`}
+            className={`chip ${useNewEntity ? "chip-active" : "chip-idle"}`}
           >
             New pending loan
           </button>
           <button
             type="button"
             onClick={() => setUseNewEntity(false)}
-            className={`flex-1 rounded py-1.5 ${!useNewEntity ? "bg-emerald-600" : "bg-zinc-800"}`}
+            className={`chip ${!useNewEntity ? "chip-active" : "chip-idle"}`}
           >
             Existing
           </button>
@@ -130,12 +127,12 @@ export function AutomationsPage() {
               value={newEntityName}
               onChange={(e) => setNewEntityName(e.target.value)}
               placeholder="Pending loan name (defaults to rule name)"
-              className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className="field text-sm"
             />
             <select
               value={entityCurrency}
               onChange={(e) => setEntityCurrency(e.target.value)}
-              className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className="field text-sm"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -148,7 +145,7 @@ export function AutomationsPage() {
           <select
             value={targetEntityId}
             onChange={(e) => setTargetEntityId(e.target.value)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className="field text-sm"
             required
           >
             <option value="">Select pending loan</option>
@@ -160,30 +157,28 @@ export function AutomationsPage() {
           </select>
         )}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+            {error}
+          </div>
+        )}
 
-        <button
-          type="submit"
-          className="w-full rounded bg-emerald-600 py-2 text-sm font-medium"
-        >
+        <button type="submit" className="btn-primary text-sm">
           Create automation
         </button>
       </form>
 
       <div className="space-y-2">
         {automations.length === 0 ? (
-          <p className="text-sm text-zinc-500">No automations yet.</p>
+          <p className="text-sm text-[var(--color-mist)]">No automations yet.</p>
         ) : (
           automations.map((a) => (
-            <div
-              key={a._id}
-              className="flex items-center justify-between rounded-lg bg-zinc-900 px-3 py-2.5"
-            >
+            <div key={a._id} className="list-row items-center">
               <div>
-                <p className="font-medium">
+                <p className="font-medium text-[var(--color-paper)]">
                   {a.name} · {a.percentage}%
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-[var(--color-mist)]">
                   → {entityName(a.targetEntityId)}
                 </p>
               </div>
@@ -191,14 +186,18 @@ export function AutomationsPage() {
                 <button
                   type="button"
                   onClick={() => toggleActive(a)}
-                  className={a.active ? "text-emerald-400" : "text-zinc-500"}
+                  className={
+                    a.active
+                      ? "text-[var(--color-sage-bright)]"
+                      : "text-[var(--color-mist)]"
+                  }
                 >
                   {a.active ? "On" : "Off"}
                 </button>
                 <button
                   type="button"
                   onClick={() => remove(a._id)}
-                  className="text-red-400"
+                  style={{ color: "var(--color-red)" }}
                 >
                   Del
                 </button>

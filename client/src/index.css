@@ -1,9 +1,261 @@
 @import "tailwindcss";
 
-body {
-  @apply bg-zinc-950 text-zinc-100 antialiased min-h-screen;
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: "Inter", "SF Pro Text", system-ui, -apple-system, sans-serif;
+
+  /* Surfaces */
+  --color-ink:         #08080a;
+  --color-ink-raised:  #111116;
+  --color-ink-soft:    #18181e;
+  --color-ink-line:    rgba(255, 255, 255, 0.07);
+
+  /* Text */
+  --color-paper:       #e8e8ec;
+  --color-paper-muted: #9ca3af;
+  --color-mist:        #5c6370;
+
+  /* Accent — single indigo */
+  --color-sage:        #6366f1;
+  --color-sage-bright: #818cf8;
+  --color-sage-deep:   #4338ca;
+
+  /* Semantic amounts */
+  --color-green:       #34d399;
+  --color-red:         #f87171;
+  --color-blue:        #60a5fa;
+
+  /* Legacy aliases used in some components */
+  --color-coral:       #ef4444;
+  --color-coral-soft:  #f87171;
+  --color-sky-soft:    #60a5fa;
 }
 
-button {
-  cursor: pointer;
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { color-scheme: dark; }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    color: var(--color-paper);
+    background-color: var(--color-ink);
+    background-image: radial-gradient(
+      ellipse 80% 45% at 50% -5%,
+      rgba(99, 102, 241, 0.08),
+      transparent 70%
+    );
+    background-attachment: fixed;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  button  { cursor: pointer; font-family: inherit; }
+  input, select, textarea { font-family: inherit; font-size: inherit; }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.35);
+    color: var(--color-paper);
+  }
+
+  /* Native select arrow color fix in dark mode */
+  select {
+    color-scheme: dark;
+  }
+}
+
+/* ─── Component classes ──────────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Typography ── */
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--color-paper);
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-mist);
+  }
+
+  /* ── Panels / Cards ── */
+  .panel {
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .panel-accent {
+    border-radius: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    background: linear-gradient(
+      145deg,
+      rgba(99, 102, 241, 0.08),
+      rgba(255, 255, 255, 0.025)
+    );
+  }
+
+  /* ── List rows ── */
+  .list-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 14px;
+    transition: background 140ms ease, border-color 140ms ease;
+  }
+
+  a.list-row:hover,
+  .list-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.11);
+  }
+
+  /* ── Form fields ── */
+  .field {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 13px;
+    color: var(--color-paper);
+    outline: none;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .field::placeholder {
+    color: var(--color-mist);
+  }
+
+  .field:focus {
+    border-color: rgba(99, 102, 241, 0.55);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+  }
+
+  /* Re-add arrow for selects */
+  select.field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c6370' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    width: 100%;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+    padding: 11px 16px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #fff;
+    letter-spacing: -0.01em;
+    transition: filter 140ms ease, transform 100ms ease;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset,
+                0 -1px 0 rgba(0,0,0,0.25) inset;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
+    filter: brightness(0.96);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-ghost {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 13px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-paper-muted);
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  }
+
+  .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--color-paper);
+  }
+
+  /* ── Chips / Segmented control ── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 7px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+    cursor: pointer;
+  }
+
+  .chip-idle {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-mist);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .chip-idle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-paper-muted);
+  }
+
+  .chip-active {
+    background: rgba(99, 102, 241, 0.16);
+    border: 1px solid rgba(99, 102, 241, 0.32);
+    color: #a5b4fc;
+  }
+
+  /* ── Amount semantic colors ── */
+  .amount-in       { color: var(--color-green); }
+  .amount-out      { color: var(--color-red); }
+  .amount-transfer { color: var(--color-blue); }
+
+  /* ── Helpers ── */
+  .muted { color: var(--color-mist); }
+
+  /* ── Entrance animation ── */
+  .fade-up {
+    animation: fade-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .fade-up-delay-1 { animation-delay: 50ms; }
+  .fade-up-delay-2 { animation-delay: 100ms; }
+  .fade-up-delay-3 { animation-delay: 150ms; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

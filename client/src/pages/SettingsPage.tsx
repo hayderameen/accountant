@@ -41,17 +41,17 @@ export function SettingsPage() {
   };
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Settings</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Settings</h1>
+      <form onSubmit={onSubmit} className="panel space-y-4 p-3">
         <div>
-          <label className="mb-1 block text-sm text-zinc-400">
+          <label className="section-label mb-1 block">
             Default currency
           </label>
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+            className="field"
           >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
@@ -61,7 +61,7 @@ export function SettingsPage() {
           </select>
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm text-[var(--color-paper-muted)]">
           <input
             type="checkbox"
             checked={runAutomationsOnImport}
@@ -70,13 +70,16 @@ export function SettingsPage() {
           Run income automations on imported Money Manager income
         </label>
 
-        {message && <p className="text-sm text-zinc-400">{message}</p>}
+        {message === "Saved" && (
+          <p className="text-sm" style={{ color: "var(--color-green)" }}>Saved</p>
+        )}
+        {message && message !== "Saved" && (
+          <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+            {message}
+          </div>
+        )}
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full rounded-lg bg-emerald-600 py-2 font-medium hover:bg-emerald-500 disabled:opacity-50"
-        >
+        <button type="submit" disabled={saving} className="btn-primary">
           {saving ? "Saving..." : "Save"}
         </button>
       </form>

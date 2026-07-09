@@ -1,35 +1,70 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
+    setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="mb-6 text-2xl font-semibold">Sign in</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+    <div
+      className="relative mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5"
+      style={{ paddingTop: "2rem", paddingBottom: "3rem" }}
+    >
+      {/* Logo */}
+      <div className="fade-up mb-9">
+        <div
+          className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-xl"
+          style={{
+            background: "rgba(99,102,241,0.15)",
+            border: "1px solid rgba(99,102,241,0.3)",
+          }}
+        >
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#818cf8" }}>A</span>
+        </div>
+        <h1
+          style={{
+            fontSize: "1.85rem",
+            fontWeight: 700,
+            letterSpacing: "-0.04em",
+            lineHeight: 1.1,
+            color: "var(--color-paper)",
+            marginBottom: "0.45rem",
+          }}
+        >
+          Welcome back
+        </h1>
+        <p style={{ fontSize: "0.9rem", color: "var(--color-mist)" }}>
+          Sign in to your account
+        </p>
+      </div>
+
+      <form onSubmit={onSubmit} className="fade-up fade-up-delay-1 space-y-3">
         <input
           type="email"
-          placeholder="Email"
+          placeholder="Email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+          className="field"
+          autoComplete="email"
           required
         />
         <input
@@ -37,19 +72,41 @@ export function LoginPage() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+          className="field"
+          autoComplete="current-password"
           required
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-emerald-600 py-2 font-medium hover:bg-emerald-500"
-        >
-          Sign in
+
+        {error && (
+          <p
+            className="rounded-lg px-3 py-2 text-sm"
+            style={{
+              color: "var(--color-red)",
+              background: "rgba(248,113,113,0.08)",
+              border: "1px solid rgba(248,113,113,0.18)",
+            }}
+          >
+            {error}
+          </p>
+        )}
+
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
-      <p className="mt-4 text-center text-sm text-zinc-400">
-        No account? <Link to="/signup" className="text-emerald-400">Sign up</Link>
+
+      <p
+        className="fade-up fade-up-delay-2 mt-5 text-center text-sm"
+        style={{ color: "var(--color-mist)" }}
+      >
+        No account?{" "}
+        <Link
+          to="/signup"
+          style={{ color: "var(--color-sage-bright)", fontWeight: 500 }}
+          className="hover:underline"
+        >
+          Sign up free
+        </Link>
       </p>
     </div>
   );

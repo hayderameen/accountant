@@ -169,10 +169,10 @@ export function AddPage() {
   const maxAmountCents = maxRepaymentCents ?? maxExpenseLoanCents;
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Add</h1>
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Add</h1>
 
-      <div className="mb-4 grid grid-cols-2 gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {(
           [
             ["expense", "Expense"],
@@ -185,9 +185,7 @@ export function AddPage() {
             key={t}
             type="button"
             onClick={() => setType(t)}
-            className={`rounded-lg py-2 text-sm ${
-              type === t ? "bg-emerald-600" : "bg-zinc-900"
-            }`}
+            className={`chip ${type === t ? "chip-active" : "chip-idle"}`}
           >
             {label}
           </button>
@@ -195,25 +193,25 @@ export function AddPage() {
       </div>
 
       {type === "repayment" && (
-        <p className="mb-4 text-sm text-zinc-400">
+        <p className="mb-4 text-sm text-[var(--color-mist)]">
           Record money someone paid back. Does not count as income.
         </p>
       )}
 
       {accounts.length === 0 ? (
-        <div className="mb-4 space-y-2 rounded-lg bg-zinc-900 p-3">
-          <p className="text-sm text-zinc-400">Create your first account</p>
+        <div className="panel mb-4 space-y-2 p-3">
+          <p className="text-sm text-[var(--color-mist)]">Create your first account</p>
           <div className="flex gap-2">
             <input
               value={newAccountName}
               onChange={(e) => setNewAccountName(e.target.value)}
               placeholder="e.g. Cash"
-              className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm"
+              className="field flex-1 text-sm"
             />
             <button
               type="button"
               onClick={createAccount}
-              className="rounded bg-emerald-600 px-3 py-1 text-sm"
+              className="btn-ghost shrink-0"
             >
               Add
             </button>
@@ -224,7 +222,7 @@ export function AddPage() {
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+            className="field"
           >
             {accounts.map((a) => (
               <option key={a._id} value={a._id}>
@@ -237,7 +235,7 @@ export function AddPage() {
             <select
               value={toAccountId}
               onChange={(e) => setToAccountId(e.target.value)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+              className="field"
               required
             >
               <option value="">To account</option>
@@ -259,7 +257,7 @@ export function AddPage() {
                   setCurrency(e.target.value);
                   setEntityId("");
                 }}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+                className="field"
               >
                 {repaymentCurrencies.length === 0 ? (
                   <option value="">No amounts owed</option>
@@ -274,7 +272,7 @@ export function AddPage() {
               <select
                 value={entityId}
                 onChange={(e) => setEntityId(e.target.value)}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+                className="field"
                 required
               >
                 <option value="">Who repaid you?</option>
@@ -292,7 +290,7 @@ export function AddPage() {
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+              className="field"
             >
               <option value="">Category (optional)</option>
               {categories.map((c) => (
@@ -310,7 +308,7 @@ export function AddPage() {
                 setCurrency(e.target.value);
                 setEntityId("");
               }}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+              className="field"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -324,7 +322,7 @@ export function AddPage() {
             <select
               value={entityId}
               onChange={(e) => setEntityId(e.target.value)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+              className="field"
             >
               <option value="">Link to pending loan (optional)</option>
               {pendingForCurrency.map((e) => (
@@ -344,11 +342,11 @@ export function AddPage() {
             placeholder="Amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+            className="field"
             required
           />
           {maxAmountCents !== undefined && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[var(--color-mist)]">
               Max {formatMoney(maxAmountCents, currency)}
             </p>
           )}
@@ -358,15 +356,16 @@ export function AddPage() {
             placeholder="Memo"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
+            className="field"
           />
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && (
+            <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+              {error}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-emerald-600 py-2 font-medium hover:bg-emerald-500"
-          >
+          <button type="submit" className="btn-primary">
             Save
           </button>
         </form>

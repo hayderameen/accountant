@@ -63,16 +63,16 @@ export function ImportPage() {
   };
 
   return (
-    <div>
-      <h1 className="mb-2 text-lg font-semibold">Import Money Manager</h1>
-      <p className="mb-4 text-sm text-zinc-400">
-        Upload <code className="text-zinc-300">money_android.sqlite</code>{" "}
-        (email backup) or <code className="text-zinc-300">.mmbak</code> (device
+    <div className="fade-up">
+      <h1 className="page-title mb-2">Import Money Manager</h1>
+      <p className="mb-4 text-sm text-[var(--color-mist)]">
+        Upload <code className="text-[var(--color-paper-muted)]">money_android.sqlite</code>{" "}
+        (email backup) or <code className="text-[var(--color-paper-muted)]">.mmbak</code> (device
         backup — raw SQLite or zip).
       </p>
 
       {!result && (
-        <form onSubmit={onPreview} className="mb-4 space-y-3">
+        <form onSubmit={onPreview} className="panel mb-4 space-y-3 p-4">
           <input
             type="file"
             accept=".sqlite,.mmbak,.db,.MoneyManager2"
@@ -81,12 +81,12 @@ export function ImportPage() {
               setPreview(null);
               setJobId(null);
             }}
-            className="w-full text-sm"
+            className="field w-full text-sm"
           />
           <button
             type="submit"
             disabled={!file || loading}
-            className="w-full rounded-lg bg-zinc-800 py-2 text-sm hover:bg-zinc-700 disabled:opacity-50"
+            className="btn-ghost w-full disabled:opacity-50"
           >
             {loading ? "Parsing..." : "Preview import"}
           </button>
@@ -94,20 +94,20 @@ export function ImportPage() {
       )}
 
       {preview && jobId && !result && (
-        <div className="mb-4 space-y-3 rounded-lg bg-zinc-900 p-3 text-sm">
-          <p>{preview.accounts} accounts</p>
-          <p>{preview.categories} categories</p>
-          <p>{preview.transactions} transactions</p>
-          <p>Income: {formatMoney(preview.incomeTotal, currency)}</p>
-          <p>Expense: {formatMoney(preview.expenseTotal, currency)}</p>
+        <div className="panel mb-4 space-y-3 p-3 text-sm">
+          <p className="text-[var(--color-paper)]">{preview.accounts} accounts</p>
+          <p className="text-[var(--color-paper)]">{preview.categories} categories</p>
+          <p className="text-[var(--color-paper)]">{preview.transactions} transactions</p>
+          <p className="amount-in">Income: {formatMoney(preview.incomeTotal, currency)}</p>
+          <p className="amount-out">Expense: {formatMoney(preview.expenseTotal, currency)}</p>
           {preview.dateFrom && preview.dateTo && (
-            <p className="text-zinc-400">
+            <p className="text-[var(--color-mist)]">
               {new Date(preview.dateFrom).toLocaleDateString()} –{" "}
               {new Date(preview.dateTo).toLocaleDateString()}
             </p>
           )}
 
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-[var(--color-paper-muted)]">
             <input
               type="checkbox"
               checked={runAutomations}
@@ -120,7 +120,7 @@ export function ImportPage() {
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="w-full rounded-lg bg-emerald-600 py-2 font-medium hover:bg-emerald-500 disabled:opacity-50"
+            className="btn-primary"
           >
             {loading ? "Importing..." : "Confirm import"}
           </button>
@@ -128,21 +128,21 @@ export function ImportPage() {
       )}
 
       {result && (
-        <div className="space-y-3 rounded-lg bg-zinc-900 p-3 text-sm">
-          <p className="text-emerald-400">Import complete</p>
-          <p>{result.imported} transactions imported</p>
-          <p>{result.skipped} duplicates skipped</p>
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="w-full rounded-lg bg-emerald-600 py-2"
-          >
+        <div className="panel space-y-3 p-3 text-sm">
+          <p className="text-[var(--color-sage-bright)]">Import complete</p>
+          <p className="text-[var(--color-paper)]">{result.imported} transactions imported</p>
+          <p className="text-[var(--color-paper)]">{result.skipped} duplicates skipped</p>
+          <button type="button" onClick={() => navigate("/")} className="btn-primary">
             Go to dashboard
           </button>
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && (
+        <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+          {error}
+        </div>
+      )}
     </div>
   );
 }

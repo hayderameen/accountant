@@ -1,20 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  api,
-  type EntityWithBalances,
-  type Transaction,
-} from "../api/client";
+import { api, type EntityWithBalances, type Transaction } from "../api/client";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { TransactionItem } from "../components/TransactionItem";
 import { flattenEntityBalances } from "../lib/loanTotals";
 
+function SectionHeader({
+  label,
+  linkTo,
+}: {
+  label: string;
+  linkTo?: string;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <h2 className="section-label">{label}</h2>
+      {linkTo && (
+        <Link
+          to={linkTo}
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 500,
+            color: "var(--color-sage-bright)",
+          }}
+          className="hover:underline"
+        >
+          View all
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <p style={{ fontSize: "0.875rem", color: "var(--color-mist)" }}>{text}</p>
+  );
+}
+
 export function DashboardPage() {
   const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
-  const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
+  const [takeBack, setTakeBack]         = useState<EntityWithBalances[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [deleteError, setDeleteError] = useState("");
+  const [deleteError, setDeleteError]   = useState("");
 
   const load = () =>
     Promise.all([
@@ -27,9 +56,7 @@ export function DashboardPage() {
       setTransactions(txns.slice(0, 5));
     });
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this transaction?")) return;
@@ -43,105 +70,78 @@ export function DashboardPage() {
     }
   };
 
-  const pendingTotals = useMemo(
-    () => flattenEntityBalances(pendingLoans),
-    [pendingLoans],
-  );
-
-  const takeBackTotals = useMemo(
-    () => flattenEntityBalances(takeBack),
-    [takeBack],
-  );
+  const pendingTotals = useMemo(() => flattenEntityBalances(pendingLoans), [pendingLoans]);
+  const takeBackTotals = useMemo(() => flattenEntityBalances(takeBack), [takeBack]);
 
   return (
-    <div className="space-y-6">
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm text-zinc-400">Pending Loans</h2>
-          <Link
-            to="/loans"
-            className="text-xs text-emerald-400 hover:text-emerald-300"
-          >
-            View all
-          </Link>
-        </div>
-        <LoanCurrencySummary
-          title="Total remaining"
-          totals={pendingTotals}
-          variant="owed"
-        />
+    <div className="space-y-7">
+      {/* ── Header ── */}
+      <div className="fade-up">
+        <p className="section-label mb-1.5">Overview</p>
+        <h1 className="page-title">Dashboard</h1>
+      </div>
+
+      {/* ── Pending loans ── */}
+      <section className="fade-up fade-up-delay-1">
+        <SectionHeader label="Pending loans" linkTo="/loans" />
+        <LoanCurrencySummary title="Total remaining" totals={pendingTotals} variant="owed" />
         <div className="space-y-2">
           {pendingLoans.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nothing owed yet.</p>
+            <EmptyState text="Nothing owed yet." />
           ) : (
             pendingLoans.map((e) => (
-              <Link
-                key={e._id}
-                to={`/loans/${e._id}`}
-                className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
-              >
-                <p className="font-medium">{e.name}</p>
-                <EntityBalanceLines
-                  balances={e.balancesByCurrency}
-                  variant="owed"
-                />
+              <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
+                <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
+                  {e.name}
+                </span>
+                <EntityBalanceLines balances={e.balancesByCurrency} variant="owed" />
               </Link>
             ))
           )}
         </div>
       </section>
 
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm text-zinc-400">Money to Take Back</h2>
-          <Link
-            to="/loans"
-            className="text-xs text-emerald-400 hover:text-emerald-300"
-          >
-            View all
-          </Link>
-        </div>
-        <LoanCurrencySummary
-          title="Total owed to you"
-          totals={takeBackTotals}
-          variant="owedToYou"
-        />
+      {/* ── Money to take back ── */}
+      <section className="fade-up fade-up-delay-2">
+        <SectionHeader label="Money to take back" linkTo="/loans" />
+        <LoanCurrencySummary title="Total owed to you" totals={takeBackTotals} variant="owedToYou" />
         <div className="space-y-2">
           {takeBack.length === 0 ? (
-            <p className="text-sm text-zinc-500">No one owes you yet.</p>
+            <EmptyState text="No one owes you yet." />
           ) : (
             takeBack.map((e) => (
-              <Link
-                key={e._id}
-                to={`/loans/${e._id}`}
-                className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
-              >
-                <p className="font-medium">{e.name}</p>
-                <EntityBalanceLines
-                  balances={e.balancesByCurrency}
-                  variant="owedToYou"
-                />
+              <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
+                <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
+                  {e.name}
+                </span>
+                <EntityBalanceLines balances={e.balancesByCurrency} variant="owedToYou" />
               </Link>
             ))
           )}
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-2 text-sm text-zinc-400">Recent</h2>
+      {/* ── Recent transactions ── */}
+      <section className="fade-up fade-up-delay-3">
+        <SectionHeader label="Recent transactions" />
         {deleteError && (
-          <p className="mb-2 text-sm text-red-400">{deleteError}</p>
+          <p
+            className="mb-2 rounded-lg px-3 py-2 text-sm"
+            style={{
+              color: "var(--color-red)",
+              background: "rgba(248,113,113,0.08)",
+              border: "1px solid rgba(248,113,113,0.15)",
+            }}
+          >
+            {deleteError}
+          </p>
         )}
         <div className="space-y-2">
           {transactions.length === 0 ? (
-            <p className="text-sm text-zinc-500">No transactions yet.</p>
+            <EmptyState text="No transactions yet." />
           ) : (
             transactions.map((t) => (
-              <TransactionItem
-                key={t._id}
-                transaction={t}
-                onDelete={handleDelete}
-              />
+              <TransactionItem key={t._id} transaction={t} onDelete={handleDelete} />
             ))
           )}
         </div>

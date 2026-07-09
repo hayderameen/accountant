@@ -55,10 +55,10 @@ function CurrencyRow({
   const net = income - expense;
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-      <span className="w-full text-xs font-medium text-zinc-500">{currency}</span>
-      <span className="text-emerald-400">Income +{formatMoney(income, currency)}</span>
-      <span className="text-rose-400">Expense -{formatMoney(expense, currency)}</span>
-      <span className={net >= 0 ? "text-emerald-300" : "text-rose-300"}>
+      <span className="section-label w-full">{currency}</span>
+      <span className="amount-in">Income +{formatMoney(income, currency)}</span>
+      <span className="amount-out">Expense -{formatMoney(expense, currency)}</span>
+      <span className={net >= 0 ? "amount-in" : "amount-out"}>
         Net {net >= 0 ? "+" : "-"}
         {formatMoney(Math.abs(net), currency)}
       </span>
@@ -77,13 +77,9 @@ function PeriodSummary({
 }) {
   return (
     <div
-      className={`mb-3 rounded-lg border px-3 py-2.5 ${
-        prominent
-          ? "border-emerald-900/50 bg-emerald-950/30"
-          : "border-zinc-800 bg-zinc-900/80"
-      }`}
+      className={`mb-3 px-3 py-2.5 ${prominent ? "panel-accent" : "panel"}`}
     >
-      <p className={`mb-2 text-sm font-semibold ${prominent ? "text-emerald-200" : "text-zinc-200"}`}>
+      <p className={`mb-2 ${prominent ? "section-label text-[var(--color-sage-bright)]" : "font-display text-sm font-semibold text-[var(--color-paper)]"}`}>
         {title}
       </p>
       <div className="space-y-2">
@@ -163,8 +159,8 @@ export function TransactionsPage() {
   ];
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Transactions</h1>
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Transactions</h1>
 
       <div className="mb-4 flex flex-wrap gap-2">
         {rangeOptions.map((opt) => (
@@ -172,11 +168,7 @@ export function TransactionsPage() {
             key={opt.id}
             type="button"
             onClick={() => setRangeMode(opt.id)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              rangeMode === opt.id
-                ? "bg-emerald-600 text-white"
-                : "bg-zinc-900 text-zinc-400"
-            }`}
+            className={`chip ${rangeMode === opt.id ? "chip-active" : "chip-idle"}`}
           >
             {opt.label}
           </button>
@@ -188,11 +180,11 @@ export function TransactionsPage() {
           <button
             type="button"
             onClick={() => setViewMonth((m) => shiftMonth(m, -1))}
-            className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+            className="btn-ghost"
           >
             ← Prev
           </button>
-          <span className="text-sm font-medium text-zinc-200">
+          <span className="text-sm font-medium text-[var(--color-paper)]">
             {viewMonth.toLocaleDateString(undefined, {
               month: "long",
               year: "numeric",
@@ -201,7 +193,7 @@ export function TransactionsPage() {
           <button
             type="button"
             onClick={() => setViewMonth((m) => shiftMonth(m, 1))}
-            className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+            className="btn-ghost"
           >
             Next →
           </button>
@@ -214,25 +206,27 @@ export function TransactionsPage() {
             type="date"
             value={customFrom}
             onChange={(e) => setCustomFrom(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm"
+            className="field text-sm"
           />
           <input
             type="date"
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm"
+            className="field text-sm"
           />
         </div>
       )}
 
       {deleteError && (
-        <p className="mb-3 text-sm text-red-400">{deleteError}</p>
+        <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+          {deleteError}
+        </div>
       )}
 
       {loading ? (
-        <p className="text-sm text-zinc-500">Loading...</p>
+        <p className="text-sm text-[var(--color-mist)]">Loading...</p>
       ) : months.length === 0 ? (
-        <p className="text-sm text-zinc-500">No transactions in this period.</p>
+        <p className="text-sm text-[var(--color-mist)]">No transactions in this period.</p>
       ) : (
         <div className="space-y-6">
           {rangeMode !== "month" && combinedSummary.length > 0 && (
@@ -250,7 +244,7 @@ export function TransactionsPage() {
               <div className="space-y-4">
                 {month.days.map((day) => (
                   <div key={day.key}>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    <p className="section-label mb-2">
                       {day.label}
                     </p>
                     <div className="space-y-2">

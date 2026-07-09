@@ -150,21 +150,21 @@ export function LoansPage() {
       : undefined;
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Loans</h1>
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Loans</h1>
 
-      <div className="mb-4 grid grid-cols-2 gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setTab("pending")}
-          className={`rounded-lg py-2 text-sm ${tab === "pending" ? "bg-emerald-600" : "bg-zinc-900"}`}
+          className={`chip ${tab === "pending" ? "chip-active" : "chip-idle"}`}
         >
           Pending Loans
         </button>
         <button
           type="button"
           onClick={() => setTab("takeback")}
-          className={`rounded-lg py-2 text-sm ${tab === "takeback" ? "bg-emerald-600" : "bg-zinc-900"}`}
+          className={`chip ${tab === "takeback" ? "chip-active" : "chip-idle"}`}
         >
           Money to Take Back
         </button>
@@ -181,7 +181,7 @@ export function LoansPage() {
         variant="owedToYou"
       />
 
-      <form onSubmit={addEntity} className="mb-4 space-y-2">
+      <form onSubmit={addEntity} className="panel mb-4 space-y-2 p-3">
         <div className="flex gap-2">
           <input
             value={name}
@@ -189,20 +189,17 @@ export function LoansPage() {
             placeholder={
               tab === "pending" ? "e.g. Charity, Mutual Funds" : "e.g. Ahmed"
             }
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+            className="field flex-1 text-sm"
           />
-          <button
-            type="submit"
-            className="rounded-lg bg-zinc-800 px-3 py-2 text-sm"
-          >
+          <button type="submit" className="btn-ghost shrink-0">
             Add
           </button>
         </div>
-        <p className="text-xs text-zinc-500">Default currency for new entries</p>
+        <p className="text-xs text-[var(--color-mist)]">Default currency for new entries</p>
         <select
           value={entityCurrency}
           onChange={(e) => setEntityCurrency(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+          className="field text-sm"
         >
           {CURRENCIES.map((c) => (
             <option key={c} value={c}>
@@ -213,15 +210,12 @@ export function LoansPage() {
       </form>
 
       {tab === "pending" && entities.length > 0 && (
-        <form
-          onSubmit={addObligation}
-          className="mb-4 space-y-2 rounded-lg bg-zinc-900 p-3"
-        >
-          <p className="text-sm text-zinc-400">Add amount you owe (manual)</p>
+        <form onSubmit={addObligation} className="panel mb-4 space-y-2 p-3">
+          <p className="text-sm text-[var(--color-mist)]">Add amount you owe (manual)</p>
           <select
             value={obligationEntity}
             onChange={(e) => setObligationEntity(e.target.value)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           >
             <option value="">Select pending loan</option>
             {entities.map((e) => (
@@ -233,7 +227,7 @@ export function LoansPage() {
           <select
             value={obligationCurrency}
             onChange={(e) => setObligationCurrency(e.target.value)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
@@ -247,27 +241,21 @@ export function LoansPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount owed"
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           />
-          <button
-            type="submit"
-            className="w-full rounded bg-emerald-600 py-1.5 text-sm"
-          >
+          <button type="submit" className="btn-primary text-sm">
             Add owed amount
           </button>
         </form>
       )}
 
       {tab === "takeback" && entities.length > 0 && (
-        <form
-          onSubmit={addLoanTxn}
-          className="mb-4 space-y-2 rounded-lg bg-zinc-900 p-3"
-        >
-          <p className="text-sm text-zinc-400">Record loan or repayment</p>
+        <form onSubmit={addLoanTxn} className="panel mb-4 space-y-2 p-3">
+          <p className="text-sm text-[var(--color-mist)]">Record loan or repayment</p>
           <select
             value={selectedEntity}
             onChange={(e) => setSelectedEntity(e.target.value)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           >
             <option value="">Select person</option>
             {entities.map((e) => (
@@ -279,7 +267,7 @@ export function LoansPage() {
           <select
             value={loanAction}
             onChange={(e) => setLoanAction(e.target.value as typeof loanAction)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           >
             <option value="loan_given">They borrowed (increase owed)</option>
             <option value="repayment_received">
@@ -289,7 +277,7 @@ export function LoansPage() {
           <select
             value={loanCurrency}
             onChange={(e) => setLoanCurrency(e.target.value)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           >
             {loanCurrencyOptions.length === 0 ? (
               <option value="">No amounts owed</option>
@@ -309,35 +297,32 @@ export function LoansPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount"
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+            className="field text-sm"
           />
           {repaymentMaxCents !== undefined && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[var(--color-mist)]">
               Max {(repaymentMaxCents / 100).toFixed(2)} {loanCurrency}
             </p>
           )}
-          <button
-            type="submit"
-            className="w-full rounded bg-emerald-600 py-1.5 text-sm"
-          >
+          <button type="submit" className="btn-primary text-sm">
             Record
           </button>
         </form>
       )}
 
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+      {error && (
+        <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+          {error}
+        </div>
+      )}
 
       <div className="space-y-2">
         {entities.length === 0 ? (
-          <p className="text-sm text-zinc-500">No entries yet.</p>
+          <p className="text-sm text-[var(--color-mist)]">No entries yet.</p>
         ) : (
           entities.map((e) => (
-            <Link
-              key={e._id}
-              to={`/loans/${e._id}`}
-              className="flex justify-between rounded-lg bg-zinc-900 px-3 py-2.5 hover:bg-zinc-800"
-            >
-              <p className="font-medium">{e.name}</p>
+            <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
+              <p className="font-medium text-[var(--color-paper)]">{e.name}</p>
               <EntityBalanceLines
                 balances={e.balancesByCurrency}
                 variant={tab === "pending" ? "owed" : "owedToYou"}

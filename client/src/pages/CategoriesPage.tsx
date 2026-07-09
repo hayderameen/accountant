@@ -57,44 +57,44 @@ export function CategoriesPage() {
   };
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Categories</h1>
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Categories</h1>
 
-      <div className="mb-4 grid grid-cols-2 gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {(['expense', 'income'] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setType(t)}
-            className={`rounded-lg py-2 text-sm capitalize ${
-              type === t ? 'bg-emerald-600' : 'bg-zinc-900'
-            }`}
+            className={`chip capitalize ${type === t ? 'chip-active' : 'chip-idle'}`}
           >
             {t}
           </button>
         ))}
       </div>
 
-      <form onSubmit={onSubmit} className="mb-4 space-y-2 rounded-lg bg-zinc-900 p-3">
-        <p className="text-sm text-zinc-400">{editingId ? 'Edit category' : `New ${type} category`}</p>
+      <form onSubmit={onSubmit} className="panel mb-4 space-y-2 p-3">
+        <p className="text-sm text-[var(--color-mist)]">
+          {editingId ? 'Edit category' : `New ${type} category`}
+        </p>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Category name"
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+          className="field text-sm"
           required
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+            {error}
+          </div>
+        )}
         <div className="flex gap-2">
-          <button type="submit" className="flex-1 rounded bg-emerald-600 py-1.5 text-sm">
+          <button type="submit" className="btn-primary flex-1 text-sm">
             {editingId ? 'Update' : 'Add'}
           </button>
           {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded bg-zinc-800 px-3 py-1.5 text-sm"
-            >
+            <button type="button" onClick={resetForm} className="btn-ghost">
               Cancel
             </button>
           )}
@@ -103,16 +103,22 @@ export function CategoriesPage() {
 
       <div className="space-y-2">
         {categories.length === 0 ? (
-          <p className="text-sm text-zinc-500">No categories yet.</p>
+          <p className="text-sm text-[var(--color-mist)]">No categories yet.</p>
         ) : (
           categories.map((c) => (
-            <div key={c._id} className="flex items-center justify-between rounded-lg bg-zinc-900 px-3 py-2">
-              <span>{c.name}</span>
+            <div key={c._id} className="list-row items-center">
+              <span className="text-[var(--color-paper)]">{c.name}</span>
               <div className="flex gap-2 text-sm">
-                <button onClick={() => startEdit(c)} className="text-emerald-400">
+                <button
+                  onClick={() => startEdit(c)}
+                  className="text-[var(--color-sage-bright)]"
+                >
                   Edit
                 </button>
-                <button onClick={() => onDelete(c._id)} className="text-red-400">
+                <button
+                  onClick={() => onDelete(c._id)}
+                  style={{ color: "var(--color-red)" }}
+                >
                   Delete
                 </button>
               </div>

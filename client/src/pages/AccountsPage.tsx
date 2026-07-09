@@ -77,21 +77,18 @@ export function AccountsPage() {
   };
 
   return (
-    <div>
-      <h1 className="mb-4 text-lg font-semibold">Accounts</h1>
+    <div className="fade-up">
+      <h1 className="page-title mb-4">Accounts</h1>
 
-      <form
-        onSubmit={onSubmit}
-        className="mb-4 space-y-2 rounded-lg bg-zinc-900 p-3"
-      >
-        <p className="text-sm text-zinc-400">
+      <form onSubmit={onSubmit} className="panel mb-4 space-y-2 p-3">
+        <p className="text-sm text-[var(--color-mist)]">
           {editingId ? "Edit account" : "New account"}
         </p>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name"
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+          className="field text-sm"
           required
         />
         <input
@@ -100,13 +97,13 @@ export function AccountsPage() {
           value={balance}
           onChange={(e) => setBalance(e.target.value)}
           placeholder="Balance"
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+          className="field text-sm"
           required
         />
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
-          className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm"
+          className="field text-sm"
         >
           {CURRENCIES.map((c) => (
             <option key={c} value={c}>
@@ -114,20 +111,17 @@ export function AccountsPage() {
             </option>
           ))}
         </select>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+            {error}
+          </div>
+        )}
         <div className="flex gap-2">
-          <button
-            type="submit"
-            className="flex-1 rounded bg-emerald-600 py-1.5 text-sm"
-          >
+          <button type="submit" className="btn-primary flex-1 text-sm">
             {editingId ? "Update" : "Add"}
           </button>
           {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded bg-zinc-800 px-3 py-1.5 text-sm"
-            >
+            <button type="button" onClick={resetForm} className="btn-ghost">
               Cancel
             </button>
           )}
@@ -136,21 +130,24 @@ export function AccountsPage() {
 
       <div className="space-y-2">
         {accounts.map((a) => (
-          <div
-            key={a._id}
-            className="flex items-center justify-between rounded-lg bg-zinc-900 px-3 py-2"
-          >
+          <div key={a._id} className="list-row items-center">
             <div>
-              <p className="font-medium">{a.name}</p>
-              <p className="text-sm text-zinc-400">
+              <p className="font-medium text-[var(--color-paper)]">{a.name}</p>
+              <p className="text-sm text-[var(--color-mist)]">
                 {formatMoney(a.balance, a.currency)} · {a.currency}
               </p>
             </div>
             <div className="flex gap-2 text-sm">
-              <button onClick={() => startEdit(a)} className="text-emerald-400">
+              <button
+                onClick={() => startEdit(a)}
+                className="text-[var(--color-sage-bright)]"
+              >
                 Edit
               </button>
-              <button onClick={() => onDelete(a._id)} className="text-red-400">
+              <button
+                onClick={() => onDelete(a._id)}
+                style={{ color: "var(--color-red)" }}
+              >
                 Delete
               </button>
             </div>
