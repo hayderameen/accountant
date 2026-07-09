@@ -60,6 +60,7 @@ router.get("/", async (req, res) => {
     .populate("accountId", "name")
     .populate("categoryId", "name type")
     .populate("toAccountId", "name")
+    .select("+entityId")
     .limit(limit);
 
   res.json(transactions);

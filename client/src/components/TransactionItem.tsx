@@ -11,6 +11,11 @@ export function transactionTitle(t: Transaction): string {
   if (t.memo?.trim()) return t.memo.trim();
   const cat = categoryName(t.categoryId);
   if (cat) return cat;
+  // Friendlier labels for loan-linked transactions
+  if (t.entityId) {
+    if (t.type === "expense") return "Loan repayment";
+    if (t.type === "income")  return "Loan received";
+  }
   return t.type.charAt(0).toUpperCase() + t.type.slice(1);
 }
 
@@ -25,6 +30,10 @@ export function transactionSubtitle(
   if (typeof t.accountId === "object" && t.accountId?.name)
     parts.push(t.accountId.name);
   return parts.join(" · ");
+}
+
+export function isLoanTransaction(t: Transaction): boolean {
+  return Boolean(t.entityId);
 }
 
 const amountClass = {
@@ -54,17 +63,44 @@ export function TransactionItem({
   hideDate,
   onDelete,
 }: TransactionItemProps) {
-  const subtitle = transactionSubtitle(t, { hideDate });
+  const subtitle  = transactionSubtitle(t, { hideDate });
+  const isLoan    = isLoanTransaction(t);
 
   return (
-    <div className="list-row items-center">
+    <div
+      className="list-row items-center"
+      style={isLoan ? {
+        borderColor: "rgba(100,210,255,0.18)",
+        background:  "rgba(100,210,255,0.045)",
+      } : undefined}
+    >
       <div className="min-w-0 flex-1">
-        <p
-          className="truncate"
-          style={{ fontWeight: 500, color: "var(--color-paper)" }}
-        >
-          {transactionTitle(t)}
-        </p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p
+            className="truncate"
+            style={{ fontWeight: 500, color: "var(--color-paper)" }}
+          >
+            {transactionTitle(t)}
+          </p>
+          {isLoan && (
+            <span
+              style={{
+                flexShrink: 0,
+                fontSize: "0.62rem",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "var(--color-blue)",
+                background: "rgba(100,210,255,0.12)",
+                border: "1px solid rgba(100,210,255,0.22)",
+                borderRadius: 4,
+                padding: "1px 5px",
+              }}
+            >
+              loan
+            </span>
+          )}
+        </div>
         {subtitle && (
           <p
             className="mt-0.5 truncate"

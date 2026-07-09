@@ -2,20 +2,29 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const secondaryLinks = [
-  { to: "/accounts",    label: "Accounts" },
-  { to: "/categories",  label: "Categories" },
-  { to: "/loans",       label: "Loans" },
+  { to: "/accounts", label: "Accounts" },
+  { to: "/categories", label: "Categories" },
+  { to: "/loans", label: "Loans" },
   { to: "/automations", label: "Automations" },
-  { to: "/import",      label: "Import" },
-  { to: "/settings",    label: "Settings" },
+  { to: "/import", label: "Import" },
+  { to: "/settings", label: "Settings" },
 ] as const;
 
 function HomeIcon() {
   return (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8.5Z"
-        stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-      <path d="M9 21v-7h6v7" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path
+        d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 21v-7h6v7"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -23,8 +32,12 @@ function HomeIcon() {
 function LedgerIcon() {
   return (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M9 6h10M9 12h10M9 18h10M5 6v.01M5 12v.01M5 18v.01"
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M9 6h10M9 12h10M9 18h10M5 6v.01M5 12v.01M5 18v.01"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -32,13 +45,18 @@ function LedgerIcon() {
 function PlusIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path
+        d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 /* Blue dot logo mark */
-function LogoMark() {
+function LogoMark({ letter }: { letter: string }) {
   return (
     <div
       aria-hidden
@@ -55,7 +73,16 @@ function LogoMark() {
         boxShadow: "0 0.5px 0 rgba(255,255,255,0.08) inset",
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#409cff", lineHeight: 1 }}>A</span>
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: "#409cff",
+          lineHeight: 1,
+        }}
+      >
+        {letter}
+      </span>
     </div>
   );
 }
@@ -78,7 +105,6 @@ export function AppLayout() {
 
   return (
     <div className="relative mx-auto flex min-h-dvh max-w-lg flex-col">
-
       {/* ── Header ── */}
       <header
         className="sticky top-0 z-20 px-4 pt-3.5 pb-0"
@@ -90,7 +116,9 @@ export function AppLayout() {
         {/* Brand row */}
         <div className="flex items-center justify-between gap-3 pb-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <LogoMark />
+            <LogoMark
+              letter={user?.name?.charAt(0) || user?.email?.charAt(0) || "A"}
+            />
             <div className="min-w-0">
               <p
                 style={{
@@ -141,10 +169,7 @@ export function AppLayout() {
       </header>
 
       {/* ── Content ── */}
-      <main
-        className="flex-1 px-4 py-5"
-        style={{ paddingBottom: "5.5rem" }}
-      >
+      <main className="flex-1 px-4 py-5" style={{ paddingBottom: "5.5rem" }}>
         <Outlet />
       </main>
 
@@ -173,7 +198,9 @@ export function AppLayout() {
                     justifyContent: "center",
                     borderRadius: 10,
                     color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
-                    background: isActive ? "rgba(10,132,255,0.14)" : "transparent",
+                    background: isActive
+                      ? "rgba(10,132,255,0.14)"
+                      : "transparent",
                     transition: "color 130ms, background 130ms",
                   }}
                 >
@@ -231,7 +258,10 @@ export function AppLayout() {
           </NavLink>
 
           {/* Ledger */}
-          <NavLink to="/transactions" className="flex flex-col items-center pt-2 pb-1">
+          <NavLink
+            to="/transactions"
+            className="flex flex-col items-center pt-2 pb-1"
+          >
             {({ isActive }) => (
               <div className="flex flex-col items-center gap-1">
                 <span
@@ -243,7 +273,9 @@ export function AppLayout() {
                     justifyContent: "center",
                     borderRadius: 10,
                     color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
-                    background: isActive ? "rgba(10,132,255,0.14)" : "transparent",
+                    background: isActive
+                      ? "rgba(10,132,255,0.14)"
+                      : "transparent",
                     transition: "color 130ms, background 130ms",
                   }}
                 >
