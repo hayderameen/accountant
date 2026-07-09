@@ -4,29 +4,14 @@ import path from 'path';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
 import { stripUserId } from '../middleware/stripUserId.js';
-import {
-  ensureUploadDir,
-  createImportPreview,
-  confirmImport,
-} from '../lib/import/importService.js';
+import { createImportPreview, confirmImport } from '../lib/import/importService.js';
 
 const router = Router();
 router.use(requireAuth, stripUserId);
 
-ensureUploadDir();
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    ensureUploadDir();
-    cb(null, path.resolve('uploads'));
-  },
-  filename: (_req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-
+// Memory storage — no disk writes, works on Vercel and any serverless platform
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['.sqlite', '.mmbak', '.moneymanager2'];
@@ -41,13 +26,17 @@ const upload = multer({
 });
 
 router.post('/preview', upload.single('file'), async (req, res) => {
-  if (!req.file) {
+  if (!req.file?.buffer) {
     res.status(400).json({ error: 'No file uploaded' });
     return;
   }
 
   try {
-    const result = await createImportPreview(req.userId, req.file.path, req.file.originalname);
+    const result = await createImportPreview(
+      req.userId,
+      req.file.buffer,
+      req.file.originalname,
+    );
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to parse backup' });
@@ -70,7 +59,7 @@ router.post('/confirm', async (req, res) => {
     const result = await confirmImport(
       req.userId,
       parsed.data.jobId,
-      parsed.data.runAutomationsOnImport ?? false
+      parsed.data.runAutomationsOnImport ?? false,
     );
     res.json(result);
   } catch (err) {

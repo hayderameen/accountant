@@ -32,13 +32,15 @@ export function LoginPage() {
       {/* Logo */}
       <div className="fade-up mb-9">
         <div
-          className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-xl"
+          className="mb-5 inline-flex items-center justify-center rounded-xl px-4 py-2"
           style={{
             background: "rgba(99,102,241,0.15)",
             border: "1px solid rgba(99,102,241,0.3)",
           }}
         >
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#818cf8" }}>A</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#818cf8" }}>
+            Your Accountant
+          </span>
         </div>
         <h1
           style={{

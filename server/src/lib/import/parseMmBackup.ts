@@ -1,9 +1,10 @@
-import type Database from 'better-sqlite3';
+import type { SqliteDb } from './sqliteReader.js';
 import {
   findTable,
   tableColumns,
   pickColumn,
   isDeleted,
+  queryAll,
 } from './sqliteReader.js';
 
 export interface MmPreview {
@@ -69,7 +70,7 @@ function mapCatType(raw: unknown): 'income' | 'expense' {
   return key === '0' ? 'income' : 'expense';
 }
 
-export function parseMoneyManagerBackup(db: Database.Database): MmParsed {
+export function parseMoneyManagerBackup(db: SqliteDb): MmParsed {
   const txnTable = findTable(db, TXN_TABLES);
   const catTable = findTable(db, CAT_TABLES);
   const assetTable = findTable(db, ASSET_TABLES);
@@ -102,7 +103,7 @@ export function parseMoneyManagerBackup(db: Database.Database): MmParsed {
     const assetDelCol = pickColumn(assetCols, ['IS_DEL', 'is_del', 'C_IS_DEL']);
 
     if (assetUidCol && assetNameCol) {
-      const rows = db.prepare(`SELECT * FROM ${assetTable}`).all() as Record<string, unknown>[];
+      const rows = queryAll(db, `SELECT * FROM ${assetTable}`);
       for (const row of rows) {
         if (isDeleted(row, assetDelCol)) continue;
         const externalUid = String(row[assetUidCol]);
@@ -126,7 +127,7 @@ export function parseMoneyManagerBackup(db: Database.Database): MmParsed {
     const catDelCol = pickColumn(catCols, ['IS_DEL', 'is_del', 'C_IS_DEL']);
 
     if (catUidCol && catNameCol) {
-      const rows = db.prepare(`SELECT * FROM ${catTable}`).all() as Record<string, unknown>[];
+      const rows = queryAll(db, `SELECT * FROM ${catTable}`);
       for (const row of rows) {
         if (isDeleted(row, catDelCol)) continue;
         const externalUid = String(row[catUidCol]);
@@ -148,7 +149,7 @@ export function parseMoneyManagerBackup(db: Database.Database): MmParsed {
   let dateFrom: Date | null = null;
   let dateTo: Date | null = null;
 
-  const txnRows = db.prepare(`SELECT * FROM ${txnTable}`).all() as Record<string, unknown>[];
+  const txnRows = queryAll(db, `SELECT * FROM ${txnTable}`);
   for (const row of txnRows) {
     if (isDeleted(row, delCol)) continue;
     const type = mapTxnType(row[typeCol]);

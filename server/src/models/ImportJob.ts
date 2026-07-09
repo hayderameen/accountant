@@ -7,6 +7,8 @@ const importJobSchema = new Schema(
     fileName: { type: String },
     filePath: { type: String },
     preview: { type: Schema.Types.Mixed },
+    /** Full parsed data stored so confirm step doesn't need the original file */
+    parsedData: { type: Schema.Types.Mixed },
     error: { type: String },
   },
   { timestamps: true }

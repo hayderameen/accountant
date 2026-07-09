@@ -5,7 +5,11 @@ import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
-import { balanceForCurrency, flattenEntityBalances, owedCurrenciesFromBalances } from "../lib/loanTotals";
+import {
+  balanceForCurrency,
+  flattenEntityBalances,
+  owedCurrenciesFromBalances,
+} from "../lib/loanTotals";
 
 type Tab = "pending" | "takeback";
 
@@ -111,7 +115,9 @@ export function LoansPage() {
     if (loanAction === "repayment_received" && entity) {
       const owed = balanceForCurrency(entity, loanCurrency);
       if (cents > owed) {
-        setError(`Cannot repay more than ${(owed / 100).toFixed(2)} ${loanCurrency} owed`);
+        setError(
+          `Cannot repay more than ${(owed / 100).toFixed(2)} ${loanCurrency} owed`,
+        );
         return;
       }
     }
@@ -187,7 +193,7 @@ export function LoansPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={
-              tab === "pending" ? "e.g. Charity, Mutual Funds" : "e.g. Ahmed"
+              tab === "pending" ? "e.g. Charity, Car Loan" : "e.g. John Doe"
             }
             className="field flex-1 text-sm"
           />
@@ -195,7 +201,9 @@ export function LoansPage() {
             Add
           </button>
         </div>
-        <p className="text-xs text-[var(--color-mist)]">Default currency for new entries</p>
+        <p className="text-xs text-[var(--color-mist)]">
+          Default currency for new entries
+        </p>
         <select
           value={entityCurrency}
           onChange={(e) => setEntityCurrency(e.target.value)}
@@ -211,7 +219,9 @@ export function LoansPage() {
 
       {tab === "pending" && entities.length > 0 && (
         <form onSubmit={addObligation} className="panel mb-4 space-y-2 p-3">
-          <p className="text-sm text-[var(--color-mist)]">Add amount you owe (manual)</p>
+          <p className="text-sm text-[var(--color-mist)]">
+            Add amount you owe (manual)
+          </p>
           <select
             value={obligationEntity}
             onChange={(e) => setObligationEntity(e.target.value)}
@@ -251,7 +261,9 @@ export function LoansPage() {
 
       {tab === "takeback" && entities.length > 0 && (
         <form onSubmit={addLoanTxn} className="panel mb-4 space-y-2 p-3">
-          <p className="text-sm text-[var(--color-mist)]">Record loan or repayment</p>
+          <p className="text-sm text-[var(--color-mist)]">
+            Record loan or repayment
+          </p>
           <select
             value={selectedEntity}
             onChange={(e) => setSelectedEntity(e.target.value)}
@@ -311,7 +323,14 @@ export function LoansPage() {
       )}
 
       {error && (
-        <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+        <div
+          className="mb-3 rounded-lg px-3 py-2 text-sm"
+          style={{
+            color: "var(--color-red)",
+            background: "rgba(248,113,113,0.08)",
+            border: "1px solid rgba(248,113,113,0.18)",
+          }}
+        >
           {error}
         </div>
       )}
