@@ -1,5 +1,5 @@
-import type { Transaction } from '../api/client';
-import { totalsByCurrency, type CurrencyTotals } from './currencyTotals';
+import type { Transaction, LoanTransaction, Obligation } from '../api/client';
+import { totalsByCurrency, loanTotalsByCurrency, obligationLoanTotals, type CurrencyTotals, type LoanCurrencyTotals } from './currencyTotals';
 
 export interface DayGroup {
   key: string;
@@ -94,4 +94,48 @@ export function groupByMonthAndDay(transactions: Transaction[]): MonthGroup[] {
 
 export function toApiDate(d: Date): string {
   return d.toISOString();
+}
+
+/** Merges two LoanCurrencyTotals[] arrays by currency. */
+export function mergeLoanTotals(a: LoanCurrencyTotals[], b: LoanCurrencyTotals[]): LoanCurrencyTotals[] {
+  const map = new Map<string, { taken: number; repaid: number }>();
+  for (const { currency, taken, repaid } of [...a, ...b]) {
+    const existing = map.get(currency) ?? { taken: 0, repaid: 0 };
+    map.set(currency, { taken: existing.taken + taken, repaid: existing.repaid + repaid });
+  }
+  return [...map.entries()]
+    .map(([currency, { taken, repaid }]) => ({ currency, taken, repaid }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
+/** Returns a map of monthKey → LoanCurrencyTotals[] from LoanTransaction records. */
+export function groupLoansByMonth(loans: LoanTransaction[]): Map<string, LoanCurrencyTotals[]> {
+  const buckets = new Map<string, LoanTransaction[]>();
+  for (const l of loans) {
+    const k = monthKey(new Date(l.date));
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k)!.push(l);
+  }
+  const result = new Map<string, LoanCurrencyTotals[]>();
+  for (const [k, items] of buckets) {
+    result.set(k, loanTotalsByCurrency(items));
+  }
+  return result;
+}
+
+/** Returns a map of monthKey → LoanCurrencyTotals[] from Obligation records (i_owe loans). */
+export function groupObligationsByMonth(obligations: Obligation[]): Map<string, LoanCurrencyTotals[]> {
+  const buckets = new Map<string, Obligation[]>();
+  for (const o of obligations) {
+    // Obligations use createdAt as the reference date
+    const dateStr = o.createdAt ?? new Date().toISOString();
+    const k = monthKey(new Date(dateStr));
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k)!.push(o);
+  }
+  const result = new Map<string, LoanCurrencyTotals[]>();
+  for (const [k, items] of buckets) {
+    result.set(k, obligationLoanTotals(items));
+  }
+  return result;
 }

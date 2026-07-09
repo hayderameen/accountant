@@ -25,6 +25,12 @@ const loanSchema = z.object({
 router.get('/', async (req, res) => {
   const filter: Record<string, unknown> = { userId: req.userId };
   if (req.query.entityId) filter.entityId = req.query.entityId;
+  if (req.query.from || req.query.to) {
+    const dateFilter: Record<string, Date> = {};
+    if (req.query.from) dateFilter.$gte = new Date(req.query.from as string);
+    if (req.query.to)   dateFilter.$lte = new Date(req.query.to as string);
+    filter.date = dateFilter;
+  }
 
   const loans = await LoanTransaction.find(filter)
     .sort({ date: -1 })

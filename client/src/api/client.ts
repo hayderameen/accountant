@@ -53,6 +53,8 @@ export interface Transaction {
   accountId: Account | string;
   categoryId?: Category | string;
   toAccountId?: Account | string;
+  /** Present when this transaction was recorded as a loan inflow/outflow via an entity */
+  entityId?: string;
 }
 
 export const api = {
@@ -235,10 +237,20 @@ export const api = {
       },
     ),
 
+  getLoanTransactions: (params?: { from?: string; to?: string; entityId?: string }) => {
+    const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null) as [string, string][]))}` : "";
+    return request<LoanTransaction[]>(`/loans${qs}`);
+  },
+
   getLoanBalances: (direction?: "i_owe" | "they_owe_me") =>
     request<EntityWithBalances[]>(
       `/loans/balances${direction ? `?direction=${direction}` : ""}`,
     ),
+
+  getAllObligations: (params?: { from?: string; to?: string }) => {
+    const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null) as [string, string][]))}` : "";
+    return request<Obligation[]>(`/entities/obligations${qs}`);
+  },
 
   getEntityObligations: (entityId: string) =>
     request<ObligationWithRemaining[]>(`/entities/${entityId}/obligations`),
@@ -338,9 +350,10 @@ export interface Automation {
 
 export interface LoanTransaction {
   _id: string;
-  entityId: string;
-  type: string;
+  entityId: string | { _id: string; name: string; direction: string };
+  type: "loan_given" | "loan_received" | "repayment_made" | "repayment_received";
   amount: number;
+  currency: string;
   date: string;
   memo?: string;
 }
@@ -360,7 +373,9 @@ export interface Obligation {
   entityId: string;
   totalDue: number;
   paid: number;
+  currency?: string;
   status: "pending" | "partial" | "fulfilled";
+  createdAt?: string;
 }
 
 export interface ObligationWithRemaining extends Obligation {

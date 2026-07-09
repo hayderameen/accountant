@@ -13,6 +13,19 @@ import { resolveCurrency, normalizeCurrency } from "../lib/currency.js";
 const router = Router();
 router.use(requireAuth, stripUserId);
 
+/** GET /entities/obligations?from=&to= – all obligations for the user, optionally date-ranged */
+router.get("/obligations", async (req, res) => {
+  const filter: Record<string, unknown> = { userId: req.userId };
+  if (req.query.from || req.query.to) {
+    const range: Record<string, Date> = {};
+    if (req.query.from) range.$gte = new Date(req.query.from as string);
+    if (req.query.to)   range.$lte = new Date(req.query.to as string);
+    filter.createdAt = range;
+  }
+  const obligations = await Obligation.find(filter).sort({ createdAt: -1 });
+  res.json(obligations);
+});
+
 const entitySchema = z.object({
   name: z.string().min(1),
   type: z.enum(["person", "charity", "loan", "investment", "other"]).optional(),
