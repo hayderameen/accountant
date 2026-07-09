@@ -10,18 +10,12 @@ const secondaryLinks = [
   { to: "/settings",    label: "Settings" },
 ] as const;
 
-const primaryNav = [
-  { to: "/",            label: "Home",   end: true,  icon: HomeIcon },
-  { to: "/add",         label: "Add",    end: false, icon: PlusIcon, special: true },
-  { to: "/transactions",label: "Ledger", end: false, icon: LedgerIcon },
-] as const;
-
 function HomeIcon() {
   return (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8.5Z"
-        stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round" />
-      <path d="M9 21v-7h6v7" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round" />
+        stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M9 21v-7h6v7" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -37,23 +31,31 @@ function LedgerIcon() {
 
 function PlusIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
     </svg>
   );
 }
 
+/* Blue dot logo mark */
 function LogoMark() {
   return (
     <div
       aria-hidden
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
       style={{
-        background: "rgba(99,102,241,0.15)",
-        border: "1px solid rgba(99,102,241,0.3)",
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        background: "rgba(10,132,255,0.15)",
+        border: "1px solid rgba(10,132,255,0.32)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        boxShadow: "0 0.5px 0 rgba(255,255,255,0.08) inset",
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#818cf8", lineHeight: 1 }}>A</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#409cff", lineHeight: 1 }}>A</span>
     </div>
   );
 }
@@ -67,35 +69,44 @@ export function AppLayout() {
     navigate("/login");
   };
 
+  /* Glass surface style — reused for header + nav */
+  const glassBar: React.CSSProperties = {
+    background: "rgba(0,0,0,0.78)",
+    backdropFilter: "blur(32px) saturate(200%)",
+    WebkitBackdropFilter: "blur(32px) saturate(200%)",
+  };
+
   return (
     <div className="relative mx-auto flex min-h-dvh max-w-lg flex-col">
+
       {/* ── Header ── */}
       <header
         className="sticky top-0 z-20 px-4 pt-3.5 pb-0"
         style={{
-          background: "rgba(8,8,10,0.85)",
-          backdropFilter: "blur(20px) saturate(160%)",
-          WebkitBackdropFilter: "blur(20px) saturate(160%)",
-          borderBottom: "1px solid rgba(255,255,255,0.055)",
+          ...glassBar,
+          borderBottom: "0.5px solid rgba(84,84,88,0.5)",
         }}
       >
-        {/* Brand + logout */}
+        {/* Brand row */}
         <div className="flex items-center justify-between gap-3 pb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex min-w-0 items-center gap-2.5">
             <LogoMark />
             <div className="min-w-0">
               <p
                 style={{
                   fontSize: "1.05rem",
-                  fontWeight: 650,
+                  fontWeight: 660,
                   letterSpacing: "-0.025em",
                   lineHeight: 1.1,
-                  color: "var(--color-paper)",
+                  color: "#fff",
                 }}
               >
                 Accountant
               </p>
-              <p className="truncate text-[0.72rem]" style={{ color: "var(--color-mist)" }}>
+              <p
+                className="truncate"
+                style={{ fontSize: "0.7rem", color: "rgba(235,235,245,0.4)" }}
+              >
                 {user?.name || user?.email}
               </p>
             </div>
@@ -103,17 +114,17 @@ export function AppLayout() {
           <button
             type="button"
             onClick={handleLogout}
-            className="shrink-0 btn-ghost"
-            style={{ padding: "5px 11px", fontSize: "0.78rem" }}
+            className="btn-ghost shrink-0"
+            style={{ padding: "5px 11px", fontSize: "0.77rem" }}
           >
             Logout
           </button>
         </div>
 
-        {/* Secondary nav */}
+        {/* Secondary nav — scrollable chips */}
         <div
-          className="flex gap-1 overflow-x-auto pb-2.5"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          className="flex gap-1.5 overflow-x-auto pb-2.5"
+          style={{ scrollbarWidth: "none" }}
         >
           {secondaryLinks.map((link) => (
             <NavLink
@@ -129,8 +140,11 @@ export function AppLayout() {
         </div>
       </header>
 
-      {/* ── Page content ── */}
-      <main className="flex-1 px-4 py-5" style={{ paddingBottom: "5.5rem" }}>
+      {/* ── Content ── */}
+      <main
+        className="flex-1 px-4 py-5"
+        style={{ paddingBottom: "5.5rem" }}
+      >
         <Outlet />
       </main>
 
@@ -138,85 +152,116 @@ export function AppLayout() {
       <nav
         className="fixed inset-x-0 bottom-0 z-20"
         style={{
-          background: "rgba(8,8,10,0.9)",
-          backdropFilter: "blur(20px) saturate(160%)",
-          WebkitBackdropFilter: "blur(20px) saturate(160%)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          ...glassBar,
+          borderTop: "0.5px solid rgba(84,84,88,0.45)",
         }}
       >
         <div
           className="mx-auto grid max-w-lg grid-cols-3"
           style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
         >
-          {primaryNav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className="flex flex-col items-center pt-2 pb-1"
-            >
-              {({ isActive }) =>
-                item.special ? (
-                  /* ── Special Add button ── */
-                  <div className="flex flex-col items-center gap-1">
-                    <span
-                      className="flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-150"
-                      style={
-                        isActive
-                          ? {
-                              background: "linear-gradient(180deg, #6366f1, #4f46e5)",
-                              boxShadow: "0 0 16px rgba(99,102,241,0.45)",
-                              border: "1px solid rgba(255,255,255,0.15)",
-                              color: "#fff",
-                            }
-                          : {
-                              background: "linear-gradient(180deg, #6366f1, #4f46e5)",
-                              boxShadow: "0 0 10px rgba(99,102,241,0.3)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              color: "#fff",
-                            }
-                      }
-                    >
-                      <item.icon />
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        fontWeight: 600,
-                        letterSpacing: "0.04em",
-                        color: isActive ? "#a5b4fc" : "var(--color-mist)",
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                ) : (
-                  /* ── Regular nav item ── */
-                  <div className="flex flex-col items-center gap-1">
-                    <span
-                      className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150"
-                      style={{
-                        color: isActive ? "#818cf8" : "var(--color-mist)",
-                        background: isActive ? "rgba(99,102,241,0.12)" : "transparent",
-                      }}
-                    >
-                      <item.icon />
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        fontWeight: 600,
-                        letterSpacing: "0.04em",
-                        color: isActive ? "#818cf8" : "var(--color-mist)",
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                )
-              }
-            </NavLink>
-          ))}
+          {/* Home */}
+          <NavLink to="/" end className="flex flex-col items-center pt-2 pb-1">
+            {({ isActive }) => (
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  style={{
+                    display: "flex",
+                    width: 32,
+                    height: 32,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                    background: isActive ? "rgba(10,132,255,0.14)" : "transparent",
+                    transition: "color 130ms, background 130ms",
+                  }}
+                >
+                  <HomeIcon />
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.63rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                  }}
+                >
+                  Home
+                </span>
+              </div>
+            )}
+          </NavLink>
+
+          {/* Add — prominent floating glass button */}
+          <NavLink to="/add" className="flex flex-col items-center pt-1.5 pb-1">
+            {({ isActive }) => (
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  style={{
+                    display: "flex",
+                    width: 44,
+                    height: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 14,
+                    background: "#0a84ff",
+                    border: "0.5px solid rgba(255,255,255,0.2)",
+                    color: "#fff",
+                    boxShadow:
+                      "0 1px 0 rgba(255,255,255,0.22) inset, 0 -1px 0 rgba(0,0,0,0.1) inset, 0 4px 16px rgba(10,132,255,0.35)",
+                    opacity: isActive ? 0.85 : 1,
+                    transition: "opacity 130ms",
+                  }}
+                >
+                  <PlusIcon />
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.63rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                  }}
+                >
+                  Add
+                </span>
+              </div>
+            )}
+          </NavLink>
+
+          {/* Ledger */}
+          <NavLink to="/transactions" className="flex flex-col items-center pt-2 pb-1">
+            {({ isActive }) => (
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  style={{
+                    display: "flex",
+                    width: 32,
+                    height: 32,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                    background: isActive ? "rgba(10,132,255,0.14)" : "transparent",
+                    transition: "color 130ms, background 130ms",
+                  }}
+                >
+                  <LedgerIcon />
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.63rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                  }}
+                >
+                  Ledger
+                </span>
+              </div>
+            )}
+          </NavLink>
         </div>
       </nav>
     </div>
