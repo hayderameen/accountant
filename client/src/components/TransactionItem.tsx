@@ -24,7 +24,11 @@ export function transactionSubtitle(
   opts?: { hideDate?: boolean },
 ): string {
   const parts: string[] = [];
-  if (!opts?.hideDate) parts.push(new Date(t.date).toLocaleDateString());
+  const d = new Date(t.date);
+  if (!opts?.hideDate) {
+    parts.push(d.toLocaleDateString());
+  }
+  parts.push(d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }));
   const cat = categoryName(t.categoryId);
   if (cat) parts.push(cat);
   if (typeof t.accountId === "object" && t.accountId?.name)
