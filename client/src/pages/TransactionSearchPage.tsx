@@ -9,7 +9,12 @@ function SearchIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
-      <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="m16 16 4 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -33,13 +38,19 @@ export function TransactionSearchPage() {
 
     setLoading(true);
     setError("");
-    api.searchTransactions(query)
+    api
+      .searchTransactions(query)
       .then(setTransactions)
-      .catch((err) => setError(err instanceof Error ? err.message : "Search failed"))
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Search failed"),
+      )
       .finally(() => setLoading(false));
   }, [query]);
 
-  const months = useMemo(() => groupByMonthAndDay(transactions), [transactions]);
+  const months = useMemo(
+    () => groupByMonthAndDay(transactions),
+    [transactions],
+  );
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -50,13 +61,17 @@ export function TransactionSearchPage() {
 
   return (
     <div className="fade-up">
-      <button type="button" onClick={() => navigate("/transactions")} className="btn-ghost mb-4">
+      <button
+        type="button"
+        onClick={() => navigate("/transactions")}
+        className="btn-ghost mb-4"
+      >
         ← Back to ledger
       </button>
 
       <h1 className="page-title mb-4">Search transactions</h1>
 
-      <form onSubmit={onSubmit} className="mb-5 flex gap-2">
+      <form onSubmit={onSubmit} className="mb-5 flex flex-col gap-2">
         <div className="relative flex-1">
           <span
             className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
@@ -74,7 +89,11 @@ export function TransactionSearchPage() {
             autoFocus
           />
         </div>
-        <button type="submit" className="btn-primary shrink-0" disabled={!input.trim()}>
+        <button
+          type="submit"
+          className="btn-primary shrink-0"
+          disabled={!input.trim()}
+        >
           Search
         </button>
       </form>
@@ -95,16 +114,21 @@ export function TransactionSearchPage() {
           {error}
         </div>
       ) : !query ? (
-        <p className="muted text-sm">Search any text stored with a transaction.</p>
+        <p className="muted text-sm">
+          Search any text stored with a transaction.
+        </p>
       ) : transactions.length === 0 ? (
         <div className="panel p-4">
           <p className="text-paper text-sm">No matches for “{query}”</p>
-          <p className="muted mt-1 text-xs">Try a memo, category, account, currency, or type.</p>
+          <p className="muted mt-1 text-xs">
+            Try a memo, category, account, currency, or type.
+          </p>
         </div>
       ) : (
         <>
           <p className="section-label mb-4">
-            {transactions.length} {transactions.length === 1 ? "result" : "results"} for “{query}”
+            {transactions.length}{" "}
+            {transactions.length === 1 ? "result" : "results"} for “{query}”
           </p>
           <div className="space-y-7">
             {months.map((month) => (
