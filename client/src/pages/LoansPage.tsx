@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, type EntityWithBalances } from "../api/client";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
+import { SkeletonBlock, SkeletonList, SkeletonSummary } from "../components/Skeleton";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import {
@@ -31,6 +32,7 @@ export function LoansPage() {
     "loan_given" | "repayment_received"
   >("loan_given");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const direction = tab === "pending" ? "i_owe" : "they_owe_me";
 
@@ -45,14 +47,19 @@ export function LoansPage() {
   );
 
   const load = async () => {
-    const [pending, takeback, list] = await Promise.all([
-      api.getEntities("i_owe"),
-      api.getEntities("they_owe_me"),
-      api.getEntities(direction),
-    ]);
-    setPendingLoans(pending);
-    setTakeBack(takeback);
-    setEntities(list);
+    setLoading(true);
+    try {
+      const [pending, takeback, list] = await Promise.all([
+        api.getEntities("i_owe"),
+        api.getEntities("they_owe_me"),
+        api.getEntities(direction),
+      ]);
+      setPendingLoans(pending);
+      setTakeBack(takeback);
+      setEntities(list);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -176,6 +183,20 @@ export function LoansPage() {
         </button>
       </div>
 
+      {loading && (
+        <div aria-label="Loading loans" role="status">
+          <SkeletonSummary />
+          <SkeletonSummary />
+          <div className="panel mb-4 space-y-2 p-3">
+            <SkeletonBlock className="block h-11 w-full rounded-xl" />
+            <SkeletonBlock className="block h-3 w-40" />
+            <SkeletonBlock className="block h-11 w-full rounded-xl" />
+          </div>
+          <SkeletonList count={4} subtitle={false} />
+        </div>
+      )}
+
+      {!loading && <>
       <LoanCurrencySummary
         title="Total remaining"
         totals={pendingTotals}
@@ -350,6 +371,7 @@ export function LoansPage() {
           ))
         )}
       </div>
+      </>}
     </div>
   );
 }

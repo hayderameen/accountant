@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, type Category } from '../api/client';
+import { SkeletonList } from '../components/Skeleton';
 
 export function CategoriesPage() {
   const [type, setType] = useState<'expense' | 'income'>('expense');
@@ -7,11 +8,17 @@ export function CategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const load = () => api.getCategories(type).then(setCategories);
+  const load = (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    return api.getCategories(type).then(setCategories).finally(() => {
+      if (showLoading) setLoading(false);
+    });
+  };
 
   useEffect(() => {
-    load();
+    load(true);
     resetForm();
   }, [type]);
 
@@ -102,7 +109,9 @@ export function CategoriesPage() {
       </form>
 
       <div className="space-y-2">
-        {categories.length === 0 ? (
+        {loading ? (
+          <SkeletonList count={5} subtitle={false} />
+        ) : categories.length === 0 ? (
           <p className="text-sm text-[var(--color-mist)]">No categories yet.</p>
         ) : (
           categories.map((c) => (

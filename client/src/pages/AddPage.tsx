@@ -10,6 +10,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { balanceForCurrency, owedCurrenciesFromEntities } from "../lib/loanTotals";
+import { SkeletonForm } from "../components/Skeleton";
 
 type AddType = "expense" | "income" | "transfer" | "repayment";
 
@@ -31,19 +32,24 @@ export function AddPage() {
   const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
   const [newAccountName, setNewAccountName] = useState("");
   const [error, setError] = useState("");
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingEntities, setLoadingEntities] = useState(true);
 
   useEffect(() => {
     setCurrency(defaultCurrency);
   }, [defaultCurrency]);
 
   const loadEntities = () => {
-    api.getEntities("i_owe").then(setPendingLoans);
-    api.getEntities("they_owe_me").then(setTakeBack);
+    setLoadingEntities(true);
+    Promise.all([
+      api.getEntities("i_owe"),
+      api.getEntities("they_owe_me"),
+    ]).then(([pending, takeback]) => {
+      setPendingLoans(pending);
+      setTakeBack(takeback);
+    }).finally(() => setLoadingEntities(false));
   };
-
-  useEffect(() => {
-    loadEntities();
-  }, []);
 
   useEffect(() => {
     if (type === "expense" || type === "repayment") {
@@ -69,16 +75,18 @@ export function AddPage() {
     api.getAccounts().then((a) => {
       setAccounts(a);
       if (a[0]) setAccountId(a[0]._id);
-    });
+    }).finally(() => setLoadingAccounts(false));
   }, []);
 
   useEffect(() => {
     if (type === "transfer" || type === "repayment") {
       setCategories([]);
+      setLoadingCategories(false);
       return;
     }
+    setLoadingCategories(true);
     const catType = type === "income" ? "income" : "expense";
-    api.getCategories(catType).then(setCategories);
+    api.getCategories(catType).then(setCategories).finally(() => setLoadingCategories(false));
   }, [type]);
 
   const createAccount = async () => {
@@ -167,6 +175,10 @@ export function AddPage() {
       ? balanceForCurrency(selectedPending, currency)
       : undefined;
   const maxAmountCents = maxRepaymentCents ?? maxExpenseLoanCents;
+  const dataLoading =
+    loadingAccounts ||
+    ((type === "expense" || type === "repayment") && loadingEntities) ||
+    ((type === "expense" || type === "income") && loadingCategories);
 
   return (
     <div className="fade-up">
@@ -198,7 +210,9 @@ export function AddPage() {
         </p>
       )}
 
-      {accounts.length === 0 ? (
+      {dataLoading ? (
+        <SkeletonForm fields={type === "repayment" ? 5 : 4} />
+      ) : accounts.length === 0 ? (
         <div className="panel mb-4 space-y-2 p-3">
           <p className="text-sm text-[var(--color-mist)]">Create your first account</p>
           <div className="flex gap-2">

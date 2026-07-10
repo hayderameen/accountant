@@ -264,6 +264,56 @@
   /* ── Helpers ── */
   .muted { color: var(--color-mist); }
 
+  /* ── Loading skeletons ── */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.075);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.035) inset;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-110%);
+    background: linear-gradient(
+      100deg,
+      transparent 15%,
+      rgba(255, 255, 255, 0.1) 45%,
+      rgba(255, 255, 255, 0.15) 52%,
+      transparent 82%
+    );
+    animation: skeleton-shimmer 1.65s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .loading-orbit {
+    width: 38px;
+    height: 38px;
+    position: relative;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 24px rgba(10, 132, 255, 0.12);
+  }
+
+  .loading-orbit::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    border: 1.5px solid transparent;
+    border-top-color: var(--color-sage-bright);
+    animation: loading-spin 0.85s linear infinite;
+  }
+
+  .loading-orbit span {
+    position: absolute;
+    inset: 13px;
+    border-radius: inherit;
+    background: var(--color-sage-bright);
+    box-shadow: 0 0 12px rgba(64, 156, 255, 0.65);
+  }
+
   /* ── Entrance animation ── */
   .fade-up {
     animation: fade-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -276,4 +326,19 @@
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes skeleton-shimmer {
+  to { transform: translateX(110%); }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after,
+  .loading-orbit::before {
+    animation-duration: 3s;
+  }
 }

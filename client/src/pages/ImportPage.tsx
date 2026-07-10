@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, formatMoney } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { FALLBACK_CURRENCY } from "../lib/currencies";
+import { SkeletonBlock } from "../components/Skeleton";
 
 interface ImportPreview {
   accounts: number;
@@ -91,6 +92,16 @@ export function ImportPage() {
             {loading ? "Parsing..." : "Preview import"}
           </button>
         </form>
+      )}
+
+      {loading && !preview && !result && (
+        <div className="panel mb-4 space-y-3 p-4" role="status" aria-label="Reading import file">
+          <SkeletonBlock className="block h-3 w-28" />
+          <SkeletonBlock className="block h-4 w-3/4" />
+          <SkeletonBlock className="block h-4 w-2/3" />
+          <SkeletonBlock className="block h-4 w-4/5" />
+          <SkeletonBlock className="block h-11 w-full rounded-xl" />
+        </div>
       )}
 
       {preview && jobId && !result && (

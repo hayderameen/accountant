@@ -14,10 +14,11 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { LoansPage } from './pages/LoansPage';
 import { EntityLoanDetailPage } from './pages/EntityLoanDetailPage';
 import { AutomationsPage } from './pages/AutomationsPage';
+import { AppLoadingScreen } from './components/Skeleton';
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <AppLoadingScreen />;
   if (user) return <Navigate to="/" replace />;
   return children;
 }

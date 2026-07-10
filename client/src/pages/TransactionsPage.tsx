@@ -27,6 +27,7 @@ import {
   type LoanCurrencyTotals,
 } from "../lib/currencyTotals";
 import { TransactionItem } from "../components/TransactionItem";
+import { SkeletonLedger } from "../components/Skeleton";
 
 type RangeMode = "month" | "3m" | "6m" | "year" | "custom";
 
@@ -470,7 +471,7 @@ export function TransactionsPage() {
       )}
 
       {loading ? (
-        <p className="muted text-sm">Loading…</p>
+        <SkeletonLedger />
       ) : !hasData ? (
         <p className="muted text-sm">No transactions in this period.</p>
       ) : (

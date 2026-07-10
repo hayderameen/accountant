@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, formatMoney, type Account } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
+import { SkeletonList } from "../components/Skeleton";
 
 export function AccountsPage() {
   const { user } = useAuth();
@@ -12,11 +13,17 @@ export function AccountsPage() {
   const [balance, setBalance] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const load = () => api.getAccounts().then(setAccounts);
+  const load = (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    return api.getAccounts().then(setAccounts).finally(() => {
+      if (showLoading) setLoading(false);
+    });
+  };
 
   useEffect(() => {
-    load();
+    load(true);
   }, []);
 
   const resetForm = () => {
@@ -129,7 +136,7 @@ export function AccountsPage() {
       </form>
 
       <div className="space-y-2">
-        {accounts.map((a) => (
+        {loading ? <SkeletonList count={4} /> : accounts.map((a) => (
           <div key={a._id} className="list-row items-center">
             <div>
               <p className="font-medium text-[var(--color-paper)]">{a.name}</p>

@@ -11,6 +11,7 @@ import {
 import { ActivityMonthSummary } from "../components/ActivityMonthSummary";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanActivityItem } from "../components/LoanActivityItem";
+import { SkeletonLoanDetail } from "../components/Skeleton";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { groupActivityByMonthAndDay } from "../lib/groupActivity";
@@ -41,11 +42,15 @@ export function EntityLoanDetailPage() {
   const load = () => {
     if (!entityId) return;
     setLoading(true);
-    api
-      .getEntityActivity(entityId)
-      .then((data) => {
+    Promise.all([
+      api.getEntityActivity(entityId),
+      api.getAccounts(),
+    ])
+      .then(([data, accountList]) => {
         setEntity(data.entity);
         setActivity(data.activity);
+        setAccounts(accountList);
+        if (accountList[0]) setAccountId((current) => current || accountList[0]._id);
         const rows = data.summary.byCurrency.map((row) => {
           if ("balance" in row) {
             return { currency: row.currency, balance: row.balance };
@@ -61,13 +66,6 @@ export function EntityLoanDetailPage() {
   useEffect(() => {
     load();
   }, [entityId]);
-
-  useEffect(() => {
-    api.getAccounts().then((list) => {
-      setAccounts(list);
-      if (list[0]) setAccountId(list[0]._id);
-    });
-  }, []);
 
   const months = useMemo(() => groupActivityByMonthAndDay(activity), [activity]);
 
@@ -165,7 +163,7 @@ export function EntityLoanDetailPage() {
     }
   };
 
-  if (loading) return <p className="text-sm text-[var(--color-mist)]">Loading...</p>;
+  if (loading) return <SkeletonLoanDetail />;
   if (!entity) return <p className="text-sm text-[var(--color-mist)]">Not found.</p>;
 
   const isPending = entity.direction === "i_owe";

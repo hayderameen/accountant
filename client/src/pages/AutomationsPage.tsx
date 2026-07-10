@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, type Automation, type Entity } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
+import { SkeletonList } from "../components/Skeleton";
 
 export function AutomationsPage() {
   const { user } = useAuth();
@@ -15,14 +16,20 @@ export function AutomationsPage() {
   const [entityCurrency, setEntityCurrency] = useState(defaultCurrency);
   const [targetEntityId, setTargetEntityId] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [auto, entities] = await Promise.all([
-      api.getAutomations(),
-      api.getEntities("i_owe"),
-    ]);
-    setAutomations(auto);
-    setPendingLoans(entities);
+    setLoading(true);
+    try {
+      const [auto, entities] = await Promise.all([
+        api.getAutomations(),
+        api.getEntities("i_owe"),
+      ]);
+      setAutomations(auto);
+      setPendingLoans(entities);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -169,7 +176,9 @@ export function AutomationsPage() {
       </form>
 
       <div className="space-y-2">
-        {automations.length === 0 ? (
+        {loading ? (
+          <SkeletonList count={3} />
+        ) : automations.length === 0 ? (
           <p className="text-sm text-[var(--color-mist)]">No automations yet.</p>
         ) : (
           automations.map((a) => (
