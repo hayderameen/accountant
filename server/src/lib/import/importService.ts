@@ -9,6 +9,14 @@ import { User } from "../../models/User.js";
 import { resolveCurrency } from "../currency.js";
 import { onIncomeCreated } from "../../services/automationEngine.js";
 
+const BATCH_SIZE = 500;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 /** No-op kept for backward compatibility with import.ts route */
 export function ensureUploadDir() {}
 
@@ -30,7 +38,6 @@ export async function createImportPreview(
     status: "preview",
     fileName,
     preview: parsed.preview,
-    // Store full parsed data so confirm doesn't need the file again
     parsedData: parsed,
   });
 
@@ -50,95 +57,143 @@ export async function confirmImport(
   const parsed = job.parsedData as Awaited<ReturnType<typeof parseMoneyManagerBackup>>;
 
   try {
+    // ── Accounts ──────────────────────────────────────────────────────────────
+    const accountExternalUids = parsed.accounts.map((a) => a.externalUid);
+    const existingAccounts = await Account.find({
+      userId,
+      externalUid: { $in: accountExternalUids },
+    }).select("_id externalUid currency");
+
     const accountIdByExternal = new Map<string, mongoose.Types.ObjectId>();
     const accountCurrencyById = new Map<string, string>();
+    const existingAccountUids = new Set<string>();
 
-    for (const a of parsed.accounts) {
-      const existing = await Account.findOne({ userId, externalUid: a.externalUid });
-      if (existing) {
-        accountIdByExternal.set(a.externalUid, existing._id);
-        accountCurrencyById.set(existing._id.toString(), existing.currency);
-        continue;
-      }
-      const created = await Account.create({
-        userId,
-        name: a.name,
-        balance: a.balance,
-        externalUid: a.externalUid,
-        source: "money_manager",
-      });
-      accountIdByExternal.set(a.externalUid, created._id);
-      accountCurrencyById.set(created._id.toString(), created.currency);
+    for (const acc of existingAccounts) {
+      accountIdByExternal.set(acc.externalUid!, acc._id);
+      accountCurrencyById.set(acc._id.toString(), acc.currency!);
+      existingAccountUids.add(acc.externalUid!);
     }
 
     const user = await User.findById(userId).select("settings.defaultCurrency");
     const userDefault = user?.settings?.defaultCurrency ?? "PKR";
 
+    // Pre-assign IDs for new accounts so we have them before insertMany
+    const newAccountDocs = parsed.accounts
+      .filter((a) => !existingAccountUids.has(a.externalUid))
+      .map((a) => {
+        const id = new mongoose.Types.ObjectId();
+        accountIdByExternal.set(a.externalUid, id);
+        accountCurrencyById.set(id.toString(), userDefault);
+        return {
+          _id: id,
+          userId,
+          name: a.name,
+          balance: a.balance,
+          currency: userDefault,
+          externalUid: a.externalUid,
+          source: "money_manager",
+        };
+      });
+
+    if (newAccountDocs.length) {
+      await Account.insertMany(newAccountDocs, { ordered: false });
+    }
+
+    // ── Categories ────────────────────────────────────────────────────────────
+    const categoryExternalUids = parsed.categories.map((c) => c.externalUid);
+    const existingCategories = await Category.find({
+      userId,
+      externalUid: { $in: categoryExternalUids },
+    }).select("_id externalUid");
+
     const categoryIdByExternal = new Map<string, mongoose.Types.ObjectId>();
+    const existingCategoryUids = new Set<string>();
+
+    for (const cat of existingCategories) {
+      categoryIdByExternal.set(cat.externalUid!, cat._id);
+      existingCategoryUids.add(cat.externalUid!);
+    }
+
+    // Pre-assign IDs for all new categories first so parent refs resolve correctly
     for (const c of parsed.categories) {
-      const existing = await Category.findOne({ userId, externalUid: c.externalUid });
-      if (existing) {
-        categoryIdByExternal.set(c.externalUid, existing._id);
-        continue;
+      if (!existingCategoryUids.has(c.externalUid)) {
+        categoryIdByExternal.set(c.externalUid, new mongoose.Types.ObjectId());
       }
-      const parentId =
-        c.parentExternalUid && categoryIdByExternal.get(c.parentExternalUid)
-          ? categoryIdByExternal.get(c.parentExternalUid)
-          : undefined;
-      const created = await Category.create({
+    }
+
+    const newCategoryDocs = parsed.categories
+      .filter((c) => !existingCategoryUids.has(c.externalUid))
+      .map((c) => ({
+        _id: categoryIdByExternal.get(c.externalUid)!,
         userId,
         name: c.name,
         type: c.type,
-        parentId,
+        parentId:
+          c.parentExternalUid && categoryIdByExternal.has(c.parentExternalUid)
+            ? categoryIdByExternal.get(c.parentExternalUid)
+            : undefined,
         externalUid: c.externalUid,
         source: "money_manager",
-      });
-      categoryIdByExternal.set(c.externalUid, created._id);
+      }));
+
+    if (newCategoryDocs.length) {
+      await Category.insertMany(newCategoryDocs, { ordered: false });
     }
 
-    let imported = 0;
-    let skipped = 0;
+    // ── Transactions ──────────────────────────────────────────────────────────
+    // One query to get all already-imported externalUids — no per-row dup check
+    const txnExternalUids = parsed.transactions.map((t) => t.externalUid);
+    const existingTxns = await Transaction.find({
+      userId,
+      externalUid: { $in: txnExternalUids },
+    }).select("externalUid");
+    const existingTxnUids = new Set(existingTxns.map((t) => t.externalUid as string));
 
-    for (const t of parsed.transactions) {
-      const dup = await Transaction.findOne({ userId, externalUid: t.externalUid });
-      if (dup) { skipped++; continue; }
-
-      const accountId = accountIdByExternal.get(t.accountExternalUid);
-      if (!accountId) continue;
-
-      const currency = resolveCurrency(
-        undefined,
-        accountCurrencyById.get(accountId.toString()),
-        userDefault,
-      );
-
-      await Transaction.create({
-        userId,
-        type: t.type,
-        amount: t.amount,
-        date: t.date,
-        accountId,
-        categoryId: t.categoryExternalUid
-          ? categoryIdByExternal.get(t.categoryExternalUid)
-          : undefined,
-        toAccountId: t.toAccountExternalUid
-          ? accountIdByExternal.get(t.toAccountExternalUid)
-          : undefined,
-        currency,
-        memo: t.memo,
-        externalUid: t.externalUid,
-        source: "money_manager",
-        importedAt: new Date(),
+    const importedAt = new Date();
+    const newTxnDocs = parsed.transactions
+      .filter((t) => !existingTxnUids.has(t.externalUid))
+      .flatMap((t) => {
+        const accountId = accountIdByExternal.get(t.accountExternalUid);
+        if (!accountId) return [];
+        const currency = resolveCurrency(
+          undefined,
+          accountCurrencyById.get(accountId.toString()),
+          userDefault,
+        );
+        return [{
+          userId,
+          type: t.type,
+          amount: t.amount,
+          date: t.date,
+          accountId,
+          categoryId: t.categoryExternalUid
+            ? categoryIdByExternal.get(t.categoryExternalUid)
+            : undefined,
+          toAccountId: t.toAccountExternalUid
+            ? accountIdByExternal.get(t.toAccountExternalUid)
+            : undefined,
+          currency,
+          memo: t.memo,
+          externalUid: t.externalUid,
+          source: "money_manager",
+          importedAt,
+        }];
       });
-      imported++;
+
+    // Insert in chunks to avoid hitting MongoDB's 16 MB document/batch limits
+    for (const batch of chunk(newTxnDocs, BATCH_SIZE)) {
+      await Transaction.insertMany(batch, { ordered: false });
     }
+
+    const imported = newTxnDocs.length;
+    const skipped = parsed.transactions.length - imported;
 
     if (runAutomationsOnImport) {
       const importedIncome = await Transaction.find({
         userId,
         source: "money_manager",
         type: "income",
-      });
+      }).select("_id amount");
       for (const txn of importedIncome) {
         await onIncomeCreated(userId, txn._id.toString(), txn.amount, "money_manager");
       }
