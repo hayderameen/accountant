@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, formatMoney, type LoanTransaction, type Obligation, type Transaction } from "../api/client";
+import {
+  api,
+  formatMoney,
+  type LoanTransaction,
+  type Obligation,
+  type Transaction,
+} from "../api/client";
 import {
   endOfMonth,
   formatMonthLabel,
@@ -46,7 +52,9 @@ function getRange(
       return { from: startOfMonth(shiftMonth(now, -11)), to: endOfMonth(now) };
     case "custom":
       return {
-        from: customFrom ? startOfMonth(new Date(customFrom)) : startOfMonth(now),
+        from: customFrom
+          ? startOfMonth(new Date(customFrom))
+          : startOfMonth(now),
         to: customTo ? endOfMonth(new Date(customTo)) : endOfMonth(now),
       };
   }
@@ -57,10 +65,23 @@ function getRange(
 function IncomeExpenseRow({ currency, income, expense }: CurrencyTotals) {
   const net = income - expense;
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-0.5" style={{ fontSize: "0.84rem" }}>
-      <span className="section-label w-full" style={{ marginBottom: 2 }}>{currency}</span>
-      {income > 0 && <span className="amount-in tabular-nums">+{formatMoney(income, currency)}</span>}
-      {expense > 0 && <span className="amount-out tabular-nums">−{formatMoney(expense, currency)}</span>}
+    <div
+      className="flex flex-wrap gap-x-4 gap-y-0.5"
+      style={{ fontSize: "0.84rem" }}
+    >
+      <span className="section-label w-full" style={{ marginBottom: 2 }}>
+        {currency}
+      </span>
+      {income > 0 && (
+        <span className="amount-in tabular-nums">
+          +{formatMoney(income, currency)}
+        </span>
+      )}
+      {expense > 0 && (
+        <span className="amount-out tabular-nums">
+          −{formatMoney(expense, currency)}
+        </span>
+      )}
       <span
         className="tabular-nums"
         style={{
@@ -69,26 +90,89 @@ function IncomeExpenseRow({ currency, income, expense }: CurrencyTotals) {
           fontSize: "0.79rem",
         }}
       >
-        Net {net >= 0 ? "+" : "−"}{formatMoney(Math.abs(net), currency)}
+        Net {net >= 0 ? "+" : "−"}
+        {formatMoney(Math.abs(net), currency)}
       </span>
     </div>
   );
 }
 
-function LoanRow({ currency, taken, repaid }: LoanCurrencyTotals) {
+function LoanRow({
+  currency,
+  borrowed,
+  lent,
+  borrowedRepaid,
+  lentRepaid,
+}: LoanCurrencyTotals) {
+  const metrics = [
+    {
+      label: "Taken",
+      amount: borrowed,
+      color: "#ff9f0a",
+      background: "rgba(255,159,10,0.09)",
+    },
+    {
+      label: "Owed to me",
+      amount: lent,
+      color: "var(--color-blue)",
+      background: "rgba(100,210,255,0.09)",
+    },
+    {
+      label: "Paid back",
+      amount: borrowedRepaid,
+      color: "var(--color-red)",
+      background: "rgba(255,69,58,0.08)",
+    },
+    {
+      label: "Repaid to me",
+      amount: lentRepaid,
+      color: "var(--color-green)",
+      background: "rgba(48,209,88,0.08)",
+    },
+  ].filter(({ amount }) => amount > 0);
+
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-0.5" style={{ fontSize: "0.84rem" }}>
-      <span className="section-label w-full" style={{ marginBottom: 2 }}>{currency}</span>
-      {taken > 0 && (
-        <span className="amount-transfer tabular-nums">
-          {formatMoney(taken, currency)} loaned
-        </span>
-      )}
-      {repaid > 0 && (
-        <span style={{ color: "var(--color-green)", fontWeight: 500 }} className="tabular-nums">
-          {formatMoney(repaid, currency)} repaid
-        </span>
-      )}
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="section-label">{currency}</span>
+        <span
+          className="h-px flex-1"
+          style={{ background: "rgba(255,255,255,0.08)" }}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        {metrics.map(({ label, amount, color, background }) => (
+          <div
+            key={label}
+            style={{
+              padding: "9px 10px",
+              borderRadius: 10,
+              background,
+              border: `1px solid color-mix(in srgb, ${color} 22%, transparent)`,
+            }}
+          >
+            <span
+              className="block"
+              style={{
+                color,
+                fontSize: "0.61rem",
+                fontWeight: 650,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                marginBottom: 3,
+              }}
+            >
+              {label}
+            </span>
+            <span
+              className="block tabular-nums"
+              style={{ color, fontSize: "0.88rem", fontWeight: 600 }}
+            >
+              {formatMoney(amount, currency)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -136,7 +220,7 @@ function SummaryBoxPair({
   accent?: boolean;
 }) {
   const hasIncome = byCurrency.length > 0;
-  const hasLoans  = loanByCurrency.length > 0;
+  const hasLoans = loanByCurrency.length > 0;
   if (!hasIncome && !hasLoans) return null;
 
   return (
@@ -146,12 +230,16 @@ function SummaryBoxPair({
     >
       {hasIncome && (
         <SummaryBox title={label} accent={accent}>
-          {byCurrency.map((row) => <IncomeExpenseRow key={row.currency} {...row} />)}
+          {byCurrency.map((row) => (
+            <IncomeExpenseRow key={row.currency} {...row} />
+          ))}
         </SummaryBox>
       )}
       {hasLoans && (
         <SummaryBox title="Loans" accent={accent}>
-          {loanByCurrency.map((row) => <LoanRow key={row.currency} {...row} />)}
+          {loanByCurrency.map((row) => (
+            <LoanRow key={row.currency} {...row} />
+          ))}
         </SummaryBox>
       )}
     </div>
@@ -161,22 +249,22 @@ function SummaryBoxPair({
 /* ── Main page ───────────────────────────────────────────────────────────── */
 
 const rangeOptions: { id: RangeMode; label: string }[] = [
-  { id: "month", label: "Month"  },
-  { id: "3m",    label: "3 mo"   },
-  { id: "6m",    label: "6 mo"   },
-  { id: "year",  label: "Year"   },
-  { id: "custom",label: "Custom" },
+  { id: "month", label: "Month" },
+  { id: "3m", label: "3 mo" },
+  { id: "6m", label: "6 mo" },
+  { id: "year", label: "Year" },
+  { id: "custom", label: "Custom" },
 ];
 
 export function TransactionsPage() {
-  const [rangeMode, setRangeMode]     = useState<RangeMode>("month");
-  const [viewMonth, setViewMonth]     = useState(() => startOfMonth(new Date()));
-  const [customFrom, setCustomFrom]   = useState("");
-  const [customTo, setCustomTo]       = useState("");
+  const [rangeMode, setRangeMode] = useState<RangeMode>("month");
+  const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loans, setLoans]             = useState<LoanTransaction[]>([]);
+  const [loans, setLoans] = useState<LoanTransaction[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading] = useState(true);
   const [deleteError, setDeleteError] = useState("");
 
   const { from, to } = useMemo(
@@ -187,7 +275,7 @@ export function TransactionsPage() {
   useEffect(() => {
     setLoading(true);
     const fromStr = toApiDate(from);
-    const toStr   = toApiDate(to);
+    const toStr = toApiDate(to);
     Promise.all([
       api.getTransactions({ from: fromStr, to: toStr }),
       api.getLoanTransactions({ from: fromStr, to: toStr }),
@@ -212,14 +300,17 @@ export function TransactionsPage() {
     }
   };
 
-  const months = useMemo(() => groupByMonthAndDay(transactions), [transactions]);
+  const months = useMemo(
+    () => groupByMonthAndDay(transactions),
+    [transactions],
+  );
 
   // Per-month loan totals: merge all three sources
   // 1. LoanTransactions (they_owe_me direction: loan_given, repayment_received)
   // 2. Obligations (i_owe direction: loan taken = totalDue)
   // 3. Entity-linked expense Transactions (i_owe direction: repayment made, old records)
   const loansByMonthKey = useMemo(() => {
-    const fromLoanTxns    = groupLoansByMonth(loans);
+    const fromLoanTxns = groupLoansByMonth(loans);
     const fromObligations = groupObligationsByMonth(obligations);
 
     // Group entity-linked regular transactions by month
@@ -238,7 +329,7 @@ export function TransactionsPage() {
     ]);
     const result = new Map<string, LoanCurrencyTotals[]>();
     for (const k of allKeys) {
-      const a = fromLoanTxns.get(k)    ?? [];
+      const a = fromLoanTxns.get(k) ?? [];
       const b = fromObligations.get(k) ?? [];
       const c = entityByMonth.has(k)
         ? entityTransactionLoanTotals(entityByMonth.get(k)!)
@@ -250,7 +341,7 @@ export function TransactionsPage() {
 
   // Collect all month keys that appear in either regular transactions or loans
   const allMonthKeys = useMemo(() => {
-    const txnKeys  = new Set(months.map((m) => m.key));
+    const txnKeys = new Set(months.map((m) => m.key));
     const loanKeys = new Set(loansByMonthKey.keys());
     const combined = new Set([...txnKeys, ...loanKeys]);
     return [...combined].sort((a, b) => b.localeCompare(a));
@@ -263,21 +354,33 @@ export function TransactionsPage() {
   );
 
   // Combined totals for multi-month header
-  const combinedSummary     = useMemo(() => totalsByCurrency(transactions),    [transactions]);
+  const combinedSummary = useMemo(
+    () => totalsByCurrency(transactions),
+    [transactions],
+  );
   const combinedLoanSummary = useMemo(() => {
-    const fromLoanTxns  = loanTotalsByCurrency(loans);
-    const fromObls      = obligationLoanTotals(obligations);
+    const fromLoanTxns = loanTotalsByCurrency(loans);
+    const fromObls = obligationLoanTotals(obligations);
     const fromEntityTxn = entityTransactionLoanTotals(transactions);
-    return mergeLoanTotals(mergeLoanTotals(fromLoanTxns, fromObls), fromEntityTxn);
+    return mergeLoanTotals(
+      mergeLoanTotals(fromLoanTxns, fromObls),
+      fromEntityTxn,
+    );
   }, [loans, obligations, transactions]);
 
   const combinedTitle = useMemo(() => {
-    if (rangeMode === "3m")    return "Last 3 months";
-    if (rangeMode === "6m")    return "Last 6 months";
-    if (rangeMode === "year")  return "Last 12 months";
+    if (rangeMode === "3m") return "Last 3 months";
+    if (rangeMode === "6m") return "Last 6 months";
+    if (rangeMode === "year") return "Last 12 months";
     if (rangeMode === "custom") {
-      const fl = from.toLocaleDateString(undefined, { month: "short", year: "numeric" });
-      const tl = to.toLocaleDateString(undefined,   { month: "short", year: "numeric" });
+      const fl = from.toLocaleDateString(undefined, {
+        month: "short",
+        year: "numeric",
+      });
+      const tl = to.toLocaleDateString(undefined, {
+        month: "short",
+        year: "numeric",
+      });
       return `${fl} – ${tl}`;
     }
     return "Combined";
@@ -306,13 +409,30 @@ export function TransactionsPage() {
       {/* Month nav */}
       {rangeMode === "month" && (
         <div className="mb-4 flex items-center justify-between">
-          <button type="button" onClick={() => setViewMonth((m) => shiftMonth(m, -1))} className="btn-ghost">
+          <button
+            type="button"
+            onClick={() => setViewMonth((m) => shiftMonth(m, -1))}
+            className="btn-ghost"
+          >
             ← Prev
           </button>
-          <span style={{ fontSize: "0.88rem", fontWeight: 500, color: "var(--color-paper)" }}>
-            {viewMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+          <span
+            style={{
+              fontSize: "0.88rem",
+              fontWeight: 500,
+              color: "var(--color-paper)",
+            }}
+          >
+            {viewMonth.toLocaleDateString(undefined, {
+              month: "long",
+              year: "numeric",
+            })}
           </span>
-          <button type="button" onClick={() => setViewMonth((m) => shiftMonth(m, 1))} className="btn-ghost">
+          <button
+            type="button"
+            onClick={() => setViewMonth((m) => shiftMonth(m, 1))}
+            className="btn-ghost"
+          >
             Next →
           </button>
         </div>
@@ -321,15 +441,29 @@ export function TransactionsPage() {
       {/* Custom date range */}
       {rangeMode === "custom" && (
         <div className="mb-4 grid grid-cols-2 gap-2">
-          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="field text-sm" />
-          <input type="date" value={customTo}   onChange={(e) => setCustomTo(e.target.value)}   className="field text-sm" />
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="field text-sm"
+          />
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="field text-sm"
+          />
         </div>
       )}
 
       {deleteError && (
         <div
           className="mb-3 rounded-xl px-3 py-2 text-sm"
-          style={{ color: "var(--color-red)", background: "rgba(255,69,58,0.08)", border: "1px solid rgba(255,69,58,0.18)" }}
+          style={{
+            color: "var(--color-red)",
+            background: "rgba(255,69,58,0.08)",
+            border: "1px solid rgba(255,69,58,0.18)",
+          }}
         >
           {deleteError}
         </div>
@@ -342,23 +476,25 @@ export function TransactionsPage() {
       ) : (
         <div className="space-y-6">
           {/* Combined summary header for multi-month ranges */}
-          {rangeMode !== "month" && (combinedSummary.length > 0 || combinedLoanSummary.length > 0) && (
-            <SummaryBoxPair
-              label={combinedTitle}
-              byCurrency={combinedSummary}
-              loanByCurrency={combinedLoanSummary}
-              accent
-            />
-          )}
+          {rangeMode !== "month" &&
+            (combinedSummary.length > 0 || combinedLoanSummary.length > 0) && (
+              <SummaryBoxPair
+                label={combinedTitle}
+                byCurrency={combinedSummary}
+                loanByCurrency={combinedLoanSummary}
+                accent
+              />
+            )}
 
           {allMonthKeys.map((mKey) => {
-            const month        = monthByKey.get(mKey);
+            const month = monthByKey.get(mKey);
             const loanByCurrency = loansByMonthKey.get(mKey) ?? [];
-            const byCurrency   = month?.byCurrency ?? [];
+            const byCurrency = month?.byCurrency ?? [];
 
             // Derive label for loan-only months
             const [year, mon] = mKey.split("-").map(Number);
-            const monthLabel  = month?.label ?? formatMonthLabel(new Date(year, mon - 1, 1));
+            const monthLabel =
+              month?.label ?? formatMonthLabel(new Date(year, mon - 1, 1));
 
             return (
               <section key={mKey}>
@@ -375,7 +511,12 @@ export function TransactionsPage() {
                         <p className="section-label mb-2">{day.label}</p>
                         <div className="space-y-2">
                           {day.transactions.map((t) => (
-                            <TransactionItem key={t._id} transaction={t} hideDate onDelete={handleDelete} />
+                            <TransactionItem
+                              key={t._id}
+                              transaction={t}
+                              hideDate
+                              onDelete={handleDelete}
+                            />
                           ))}
                         </div>
                       </div>

@@ -98,13 +98,23 @@ export function toApiDate(d: Date): string {
 
 /** Merges two LoanCurrencyTotals[] arrays by currency. */
 export function mergeLoanTotals(a: LoanCurrencyTotals[], b: LoanCurrencyTotals[]): LoanCurrencyTotals[] {
-  const map = new Map<string, { taken: number; repaid: number }>();
-  for (const { currency, taken, repaid } of [...a, ...b]) {
-    const existing = map.get(currency) ?? { taken: 0, repaid: 0 };
-    map.set(currency, { taken: existing.taken + taken, repaid: existing.repaid + repaid });
+  const map = new Map<string, Omit<LoanCurrencyTotals, "currency">>();
+  for (const { currency, borrowed, lent, borrowedRepaid, lentRepaid } of [...a, ...b]) {
+    const existing = map.get(currency) ?? {
+      borrowed: 0,
+      lent: 0,
+      borrowedRepaid: 0,
+      lentRepaid: 0,
+    };
+    map.set(currency, {
+      borrowed: existing.borrowed + borrowed,
+      lent: existing.lent + lent,
+      borrowedRepaid: existing.borrowedRepaid + borrowedRepaid,
+      lentRepaid: existing.lentRepaid + lentRepaid,
+    });
   }
   return [...map.entries()]
-    .map(([currency, { taken, repaid }]) => ({ currency, taken, repaid }))
+    .map(([currency, amounts]) => ({ currency, ...amounts }))
     .sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
