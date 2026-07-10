@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   api,
   formatMoney,
@@ -30,6 +31,15 @@ import { TransactionItem } from "../components/TransactionItem";
 import { SkeletonLedger } from "../components/Skeleton";
 
 type RangeMode = "month" | "3m" | "6m" | "year" | "custom";
+
+function SearchIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function shiftMonth(d: Date, delta: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + delta, 1);
@@ -258,6 +268,7 @@ const rangeOptions: { id: RangeMode; label: string }[] = [
 ];
 
 export function TransactionsPage() {
+  const navigate = useNavigate();
   const [rangeMode, setRangeMode] = useState<RangeMode>("month");
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [customFrom, setCustomFrom] = useState("");
@@ -267,6 +278,7 @@ export function TransactionsPage() {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteError, setDeleteError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { from, to } = useMemo(
     () => getRange(rangeMode, viewMonth, customFrom, customTo),
@@ -299,6 +311,13 @@ export function TransactionsPage() {
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Delete failed");
     }
+  };
+
+  const handleSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+    navigate(`/transactions/search?q=${encodeURIComponent(query)}`);
   };
 
   const months = useMemo(
@@ -392,6 +411,28 @@ export function TransactionsPage() {
   return (
     <div className="fade-up">
       <h1 className="page-title mb-4">Transactions</h1>
+
+      <form onSubmit={handleSearch} className="mb-4 flex gap-2">
+        <div className="relative flex-1">
+          <span
+            className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
+            style={{ color: "var(--color-mist)" }}
+          >
+            <SearchIcon />
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search transactions"
+            className="field w-full"
+            style={{ paddingLeft: 38 }}
+          />
+        </div>
+        <button type="submit" className="btn-ghost shrink-0" disabled={!searchQuery.trim()}>
+          Search
+        </button>
+      </form>
 
       {/* Range selector */}
       <div className="mb-4 flex flex-wrap gap-2">

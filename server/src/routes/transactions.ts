@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { stripUserId } from "../middleware/stripUserId.js";
 import { onIncomeCreated } from "../services/automationEngine.js";
 import { Entity } from "../models/Entity.js";
+import { Category } from "../models/Category.js";
 import { User } from "../models/User.js";
 import { resolveCurrency } from "../lib/currency.js";
 import { recordPaymentBack, getRemainingObligationForCurrency, assertPaymentWithinRemaining } from "../services/paymentBackService.js";
@@ -34,6 +35,64 @@ function applyBalanceDelta(type: string, amount: number): number {
   if (type === "expense") return -amount;
   return 0;
 }
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+router.get("/search", async (req, res) => {
+  const query = String(req.query.q ?? "").trim();
+  if (!query) {
+    res.json([]);
+    return;
+  }
+
+  const regex = new RegExp(escapeRegExp(query.slice(0, 100)), "i");
+  const [accountIds, categoryIds, entityIds] = await Promise.all([
+    Account.find({ userId: req.userId, name: regex }).distinct("_id"),
+    Category.find({ userId: req.userId, name: regex }).distinct("_id"),
+    Entity.find({ userId: req.userId, name: regex }).distinct("_id"),
+  ]);
+
+  const textMatches: Record<string, unknown>[] = [
+    { memo: regex },
+    { type: regex },
+    { currency: regex },
+    { source: regex },
+    { externalUid: regex },
+  ];
+
+  if (accountIds.length) {
+    textMatches.push(
+      { accountId: { $in: accountIds } },
+      { toAccountId: { $in: accountIds } },
+    );
+  }
+  if (categoryIds.length) textMatches.push({ categoryId: { $in: categoryIds } });
+  if (entityIds.length) textMatches.push({ entityId: { $in: entityIds } });
+
+  const normalized = query.toLowerCase();
+  if ("loan repayment".includes(normalized)) {
+    textMatches.push({ entityId: { $exists: true }, type: "expense" });
+  }
+  if ("loan received".includes(normalized)) {
+    textMatches.push({ entityId: { $exists: true }, type: "income" });
+  }
+
+  const transactions = await Transaction.find({
+    userId: req.userId,
+    $or: textMatches,
+  })
+    .sort({ date: -1 })
+    .populate("accountId", "name")
+    .populate("categoryId", "name type")
+    .populate("toAccountId", "name")
+    .populate("entityId", "name direction")
+    .select("+entityId")
+    .limit(1000);
+
+  res.json(transactions);
+});
 
 router.get("/", async (req, res) => {
   const filter: Record<string, unknown> = { userId: req.userId };

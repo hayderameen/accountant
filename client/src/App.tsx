@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { TransactionSearchPage } from './pages/TransactionSearchPage';
 import { AddPage } from './pages/AddPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ImportPage } from './pages/ImportPage';
@@ -48,6 +49,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route index element={<DashboardPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
+              <Route path="transactions/search" element={<TransactionSearchPage />} />
               <Route path="add" element={<AddPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="import" element={<ImportPage />} />

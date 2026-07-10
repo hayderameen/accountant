@@ -69,6 +69,9 @@ export function TransactionItem({
 }: TransactionItemProps) {
   const subtitle  = transactionSubtitle(t, { hideDate });
   const isLoan    = isLoanTransaction(t);
+  const transactionDate = new Date(t.date);
+  const dayShort = transactionDate.toLocaleDateString("en-US", { weekday: "short" });
+  const dayFull = transactionDate.toLocaleDateString("en-US", { weekday: "long" });
 
   return (
     <div
@@ -86,6 +89,23 @@ export function TransactionItem({
           >
             {transactionTitle(t)}
           </p>
+          <span
+            title={dayFull}
+            style={{
+              flexShrink: 0,
+              fontSize: "0.58rem",
+              fontWeight: 650,
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              color: "var(--color-paper-muted)",
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 5,
+              padding: "1px 5px",
+            }}
+          >
+            {dayShort}
+          </span>
           {isLoan && (
             <span
               style={{

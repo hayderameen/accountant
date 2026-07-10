@@ -54,7 +54,7 @@ export interface Transaction {
   categoryId?: Category | string;
   toAccountId?: Account | string;
   /** Present when this transaction was recorded as a loan inflow/outflow via an entity */
-  entityId?: string;
+  entityId?: Entity | string;
 }
 
 export const api = {
@@ -153,6 +153,9 @@ export const api = {
     const qs = params ? `?${new URLSearchParams(params)}` : "";
     return request<Transaction[]>(`/transactions${qs}`);
   },
+
+  searchTransactions: (query: string) =>
+    request<Transaction[]>(`/transactions/search?q=${encodeURIComponent(query)}`),
 
   createTransaction: (data: {
     type: "income" | "expense" | "transfer";
