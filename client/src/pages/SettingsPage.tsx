@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../api/client";
+import { LoadingLabel } from "../components/LoadingLabel";
 
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 
@@ -43,7 +44,12 @@ export function SettingsPage() {
   return (
     <div className="fade-up">
       <h1 className="page-title mb-4">Settings</h1>
-      <form onSubmit={onSubmit} className="panel space-y-4 p-3">
+      <form
+        onSubmit={onSubmit}
+        className="panel space-y-4 p-3"
+        aria-busy={saving}
+        inert={saving ? true : undefined}
+      >
         <div>
           <label className="section-label mb-1 block">
             Default currency
@@ -80,7 +86,7 @@ export function SettingsPage() {
         )}
 
         <button type="submit" disabled={saving} className="btn-primary">
-          {saving ? "Saving..." : "Save"}
+          {saving ? <LoadingLabel>Saving…</LoadingLabel> : "Save"}
         </button>
       </form>
     </div>

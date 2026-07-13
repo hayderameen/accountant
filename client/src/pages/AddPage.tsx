@@ -11,6 +11,7 @@ import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { balanceForCurrency, owedCurrenciesFromEntities } from "../lib/loanTotals";
 import { SkeletonForm } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 
 type AddType = "expense" | "income" | "transfer" | "repayment";
 
@@ -35,6 +36,8 @@ export function AddPage() {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingEntities, setLoadingEntities] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
 
   useEffect(() => {
     setCurrency(defaultCurrency);
@@ -91,10 +94,15 @@ export function AddPage() {
 
   const createAccount = async () => {
     if (!newAccountName.trim()) return;
-    const account = await api.createAccount({ name: newAccountName.trim() });
-    setAccounts((prev) => [...prev, account]);
-    setAccountId(account._id);
-    setNewAccountName("");
+    setCreatingAccount(true);
+    try {
+      const account = await api.createAccount({ name: newAccountName.trim() });
+      setAccounts((prev) => [...prev, account]);
+      setAccountId(account._id);
+      setNewAccountName("");
+    } finally {
+      setCreatingAccount(false);
+    }
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -107,6 +115,7 @@ export function AddPage() {
       return;
     }
 
+    setSubmitting(true);
     try {
       if (type === "repayment") {
         if (!entityId) {
@@ -153,6 +162,8 @@ export function AddPage() {
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -213,7 +224,11 @@ export function AddPage() {
       {dataLoading ? (
         <SkeletonForm fields={type === "repayment" ? 5 : 4} />
       ) : accounts.length === 0 ? (
-        <div className="panel mb-4 space-y-2 p-3">
+        <div
+          className="panel mb-4 space-y-2 p-3"
+          aria-busy={creatingAccount}
+          inert={creatingAccount ? true : undefined}
+        >
           <p className="text-sm text-[var(--color-mist)]">Create your first account</p>
           <div className="flex gap-2">
             <input
@@ -225,14 +240,20 @@ export function AddPage() {
             <button
               type="button"
               onClick={createAccount}
+              disabled={creatingAccount}
               className="btn-ghost shrink-0"
             >
-              Add
+              {creatingAccount ? <LoadingLabel>Adding…</LoadingLabel> : "Add"}
             </button>
           </div>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-3">
+        <form
+          onSubmit={onSubmit}
+          className="space-y-3"
+          aria-busy={submitting}
+          inert={submitting ? true : undefined}
+        >
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
@@ -379,8 +400,8 @@ export function AddPage() {
             </div>
           )}
 
-          <button type="submit" className="btn-primary">
-            Save
+          <button type="submit" className="btn-primary" disabled={submitting}>
+            {submitting ? <LoadingLabel>Saving…</LoadingLabel> : "Save"}
           </button>
         </form>
       )}

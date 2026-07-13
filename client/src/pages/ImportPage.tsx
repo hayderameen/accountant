@@ -4,6 +4,7 @@ import { api, formatMoney } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { FALLBACK_CURRENCY } from "../lib/currencies";
 import { SkeletonBlock } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 
 interface ImportPreview {
   accounts: number;
@@ -73,7 +74,12 @@ export function ImportPage() {
       </p>
 
       {!result && (
-        <form onSubmit={onPreview} className="panel mb-4 space-y-3 p-4">
+        <form
+          onSubmit={onPreview}
+          className="panel mb-4 space-y-3 p-4"
+          aria-busy={loading}
+          inert={loading ? true : undefined}
+        >
           <input
             type="file"
             accept=".sqlite,.mmbak,.db,.MoneyManager2"
@@ -89,7 +95,7 @@ export function ImportPage() {
             disabled={!file || loading}
             className="btn-ghost w-full disabled:opacity-50"
           >
-            {loading ? "Parsing..." : "Preview import"}
+            {loading ? <LoadingLabel>Parsing…</LoadingLabel> : "Preview import"}
           </button>
         </form>
       )}
@@ -105,7 +111,11 @@ export function ImportPage() {
       )}
 
       {preview && jobId && !result && (
-        <div className="panel mb-4 space-y-3 p-3 text-sm">
+        <div
+          className="panel mb-4 space-y-3 p-3 text-sm"
+          aria-busy={loading}
+          inert={loading ? true : undefined}
+        >
           <p className="text-[var(--color-paper)]">{preview.accounts} accounts</p>
           <p className="text-[var(--color-paper)]">{preview.categories} categories</p>
           <p className="text-[var(--color-paper)]">{preview.transactions} transactions</p>
@@ -133,7 +143,7 @@ export function ImportPage() {
             disabled={loading}
             className="btn-primary"
           >
-            {loading ? "Importing..." : "Confirm import"}
+            {loading ? <LoadingLabel>Importing…</LoadingLabel> : "Confirm import"}
           </button>
         </div>
       )}

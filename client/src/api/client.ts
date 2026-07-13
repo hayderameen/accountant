@@ -187,6 +187,7 @@ export const api = {
     currency?: string;
     type?: string;
     notes?: string;
+    initialAmount?: number;
   }) =>
     request<Entity>("/entities", {
       method: "POST",

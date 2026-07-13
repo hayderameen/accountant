@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Entity } from "../models/Entity.js";
+import { Entity, type EntityDoc } from "../models/Entity.js";
 import { Obligation } from "../models/Obligation.js";
+import { LoanTransaction } from "../models/LoanTransaction.js";
 import { requireAuth } from "../middleware/auth.js";
 import { stripUserId } from "../middleware/stripUserId.js";
 import { getEntityObligationSummariesByCurrency } from "../services/paymentBackService.js";
@@ -32,7 +33,16 @@ const entitySchema = z.object({
   direction: z.enum(["i_owe", "they_owe_me"]),
   currency: z.string().optional(),
   notes: z.string().optional(),
+  initialAmount: z.number().positive().optional(),
 });
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isDuplicateKeyError(error: unknown): error is { code: number } {
+  return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+}
 
 router.get("/", async (req, res) => {
   const filter: Record<string, unknown> = { userId: req.userId };
@@ -85,11 +95,61 @@ router.post("/", async (req, res) => {
     user?.settings?.defaultCurrency ?? "PKR",
   );
 
-  const entity = await Entity.create({
-    ...parsed.data,
-    currency,
+  const name = parsed.data.name.trim();
+  const duplicate = await Entity.exists({
     userId: req.userId,
+    name: { $regex: `^${escapeRegExp(name)}$`, $options: "i" },
   });
+  if (duplicate) {
+    res.status(409).json({ error: "An entity with this name already exists" });
+    return;
+  }
+
+  const { initialAmount, ...entityData } = parsed.data;
+  let entity: EntityDoc;
+  try {
+    entity = await Entity.create({
+      ...entityData,
+      name,
+      currency,
+      userId: req.userId,
+    });
+  } catch (err) {
+    if (isDuplicateKeyError(err)) {
+      res.status(409).json({ error: "An entity with this name already exists" });
+      return;
+    }
+    throw err;
+  }
+
+  if (initialAmount) {
+    try {
+      const amount = Math.round(initialAmount);
+      if (entity.direction === "i_owe") {
+        await Obligation.create({
+          userId: req.userId,
+          entityId: entity._id,
+          totalDue: amount,
+          paid: 0,
+          currency,
+          status: "pending",
+        });
+      } else {
+        await LoanTransaction.create({
+          userId: req.userId,
+          entityId: entity._id,
+          type: "loan_given",
+          amount,
+          currency,
+          date: new Date(),
+        });
+      }
+    } catch (err) {
+      await Entity.deleteOne({ _id: entity._id, userId: req.userId });
+      throw err;
+    }
+  }
+
   res.status(201).json(entity);
 });
 

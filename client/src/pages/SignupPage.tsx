@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { LoadingLabel } from "../components/LoadingLabel";
 
 export function SignupPage() {
   const { signup } = useAuth();
@@ -58,7 +59,12 @@ export function SignupPage() {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="fade-up fade-up-delay-1 space-y-3">
+      <form
+        onSubmit={onSubmit}
+        className="fade-up fade-up-delay-1 space-y-3"
+        aria-busy={loading}
+        inert={loading ? true : undefined}
+      >
         <input
           type="text"
           placeholder="Your name"
@@ -101,7 +107,7 @@ export function SignupPage() {
         )}
 
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? "Creating account…" : "Get started"}
+          {loading ? <LoadingLabel>Creating account…</LoadingLabel> : "Get started"}
         </button>
       </form>
 

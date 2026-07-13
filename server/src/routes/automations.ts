@@ -10,6 +10,10 @@ import { resolveCurrency } from "../lib/currency.js";
 const router = Router();
 router.use(requireAuth, stripUserId);
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const automationSchema = z
   .object({
     name: z.string().min(1),
@@ -44,6 +48,16 @@ router.post("/", async (req, res) => {
   let targetEntityId = data.targetEntityId;
 
   if (data.newEntityName) {
+    const entityName = data.newEntityName.trim();
+    const duplicate = await Entity.exists({
+      userId: req.userId,
+      name: { $regex: `^${escapeRegExp(entityName)}$`, $options: "i" },
+    });
+    if (duplicate) {
+      res.status(409).json({ error: "An entity with this name already exists" });
+      return;
+    }
+
     const user = await User.findById(req.userId).select(
       "settings.defaultCurrency",
     );
@@ -54,7 +68,7 @@ router.post("/", async (req, res) => {
     );
     const entity = await Entity.create({
       userId: req.userId,
-      name: data.newEntityName,
+      name: entityName,
       direction: "i_owe",
       type: data.entityType ?? "other",
       currency,

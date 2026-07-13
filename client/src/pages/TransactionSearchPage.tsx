@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, type Transaction } from "../api/client";
 import { TransactionItem } from "../components/TransactionItem";
 import { SkeletonList } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 import { groupByMonthAndDay } from "../lib/groupTransactions";
 
 function SearchIcon() {
@@ -71,7 +72,12 @@ export function TransactionSearchPage() {
 
       <h1 className="page-title mb-4">Search transactions</h1>
 
-      <form onSubmit={onSubmit} className="mb-5 flex flex-col gap-2">
+      <form
+        onSubmit={onSubmit}
+        className="mb-5 flex flex-col gap-2"
+        aria-busy={loading}
+        inert={loading ? true : undefined}
+      >
         <div className="relative flex-1">
           <span
             className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
@@ -92,9 +98,9 @@ export function TransactionSearchPage() {
         <button
           type="submit"
           className="btn-primary shrink-0"
-          disabled={!input.trim()}
+          disabled={!input.trim() || loading}
         >
-          Search
+          {loading ? <LoadingLabel>Searching…</LoadingLabel> : "Search"}
         </button>
       </form>
 

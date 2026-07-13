@@ -12,6 +12,7 @@ import { ActivityMonthSummary } from "../components/ActivityMonthSummary";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanActivityItem } from "../components/LoanActivityItem";
 import { SkeletonLoanDetail } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { groupActivityByMonthAndDay } from "../lib/groupActivity";
@@ -191,7 +192,12 @@ export function EntityLoanDetailPage() {
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="panel mb-4 space-y-2 p-3">
+      <form
+        onSubmit={onSubmit}
+        className="panel mb-4 space-y-2 p-3"
+        aria-busy={submitting}
+        inert={submitting ? true : undefined}
+      >
         <p className="section-label">Record activity</p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -270,7 +276,7 @@ export function EntityLoanDetailPage() {
           </div>
         )}
         <button type="submit" disabled={submitting} className="btn-primary text-sm">
-          {submitting ? "Saving..." : "Save"}
+          {submitting ? <LoadingLabel>Saving…</LoadingLabel> : "Save"}
         </button>
       </form>
 

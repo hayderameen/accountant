@@ -3,6 +3,7 @@ import { api, type Automation, type Entity } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { SkeletonList } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 
 export function AutomationsPage() {
   const { user } = useAuth();
@@ -17,9 +18,11 @@ export function AutomationsPage() {
   const [targetEntityId, setTargetEntityId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    setSaving(true);
     try {
       const [auto, entities] = await Promise.all([
         api.getAutomations(),
@@ -72,6 +75,8 @@ export function AutomationsPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -93,7 +98,12 @@ export function AutomationsPage() {
         On each income, create a pending loan obligation as a % of that income.
       </p>
 
-      <form onSubmit={onSubmit} className="panel mb-6 space-y-3 p-3">
+      <form
+        onSubmit={onSubmit}
+        className="panel mb-6 space-y-3 p-3"
+        aria-busy={saving}
+        inert={saving ? true : undefined}
+      >
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -177,8 +187,8 @@ export function AutomationsPage() {
           </div>
         )}
 
-        <button type="submit" className="btn-primary text-sm">
-          Create automation
+        <button type="submit" className="btn-primary text-sm" disabled={saving}>
+          {saving ? <LoadingLabel>Creating…</LoadingLabel> : "Create automation"}
         </button>
       </form>
 

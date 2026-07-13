@@ -9,6 +9,7 @@ const entitySchema = new Schema(
       index: true,
     },
     name: { type: String, required: true, trim: true },
+    nameKey: { type: String, select: false },
     type: {
       type: String,
       enum: ["person", "charity", "loan", "investment", "other"],
@@ -19,6 +20,18 @@ const entitySchema = new Schema(
     notes: { type: String, trim: true },
   },
   { timestamps: true },
+);
+
+entitySchema.pre("validate", function () {
+  if (this.name) this.nameKey = this.name.trim().toLocaleLowerCase("en-US");
+});
+
+entitySchema.index(
+  { userId: 1, nameKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { nameKey: { $type: "string" } },
+  },
 );
 
 export type EntityDoc = InferSchemaType<typeof entitySchema> & {

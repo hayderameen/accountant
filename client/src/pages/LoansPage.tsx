@@ -8,6 +8,7 @@ import {
   SkeletonList,
   SkeletonSummary,
 } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import {
@@ -26,6 +27,10 @@ export function LoansPage() {
   const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
   const [entities, setEntities] = useState<EntityWithBalances[]>([]);
   const [name, setName] = useState("");
+  const [entityDirection, setEntityDirection] = useState<"i_owe" | "they_owe_me">(
+    "i_owe",
+  );
+  const [initialAmount, setInitialAmount] = useState("");
   const [entityCurrency, setEntityCurrency] = useState(defaultCurrency);
   const [obligationCurrency, setObligationCurrency] = useState(defaultCurrency);
   const [loanCurrency, setLoanCurrency] = useState(defaultCurrency);
@@ -36,9 +41,13 @@ export function LoansPage() {
     "loan_given" | "repayment_received"
   >("loan_given");
   const [error, setError] = useState("");
+  const [entityError, setEntityError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState<
+    "entity" | "obligation" | "loan" | null
+  >(null);
 
-  const direction = tab === "pending" ? "i_owe" : "they_owe_me";
+  const tabDirection = tab === "pending" ? "i_owe" : "they_owe_me";
 
   const pendingTotals = useMemo(
     () => flattenEntityBalances(pendingLoans),
@@ -56,7 +65,7 @@ export function LoansPage() {
       const [pending, takeback, list] = await Promise.all([
         api.getEntities("i_owe"),
         api.getEntities("they_owe_me"),
-        api.getEntities(direction),
+        api.getEntities(tabDirection),
       ]);
       setPendingLoans(pending);
       setTakeBack(takeback);
@@ -75,26 +84,45 @@ export function LoansPage() {
   useEffect(() => {
     load();
     setName("");
+    setEntityDirection(tabDirection);
+    setInitialAmount("");
     setAmount("");
     setSelectedEntity("");
     setObligationEntity("");
     setError("");
+    setEntityError("");
   }, [tab]);
 
   const addEntity = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    setError("");
+    const trimmedName = name.trim();
+    const initialAmountCents = Math.round(parseFloat(initialAmount) * 100);
+    if (!trimmedName || !initialAmountCents || initialAmountCents <= 0) return;
+    setEntityError("");
+    const duplicate = [...pendingLoans, ...takeBack].some(
+      (entity) => entity.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase(),
+    );
+    if (duplicate) {
+      setEntityError("An entity with this name already exists");
+      return;
+    }
+    setSubmitting("entity");
     try {
       await api.createEntity({
-        name: name.trim(),
-        direction,
+        name: trimmedName,
+        direction: entityDirection,
         currency: entityCurrency,
+        initialAmount: initialAmountCents,
       });
       setName("");
-      await load();
+      setInitialAmount("");
+      const targetTab = entityDirection === "i_owe" ? "pending" : "takeback";
+      if (targetTab === tab) await load();
+      else setTab(targetTab);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      setEntityError(err instanceof Error ? err.message : "Failed to add entity");
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -103,6 +131,7 @@ export function LoansPage() {
     const cents = Math.round(parseFloat(amount) * 100);
     if (!obligationEntity || !cents || cents <= 0) return;
     setError("");
+    setSubmitting("obligation");
     try {
       await api.createManualObligation(
         obligationEntity,
@@ -113,6 +142,8 @@ export function LoansPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -132,6 +163,7 @@ export function LoansPage() {
         return;
       }
     }
+    setSubmitting("loan");
     try {
       await api.createLoanTransaction({
         entityId: selectedEntity,
@@ -143,6 +175,8 @@ export function LoansPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -213,23 +247,43 @@ export function LoansPage() {
             variant="owedToYou"
           />
 
-          <form onSubmit={addEntity} className="panel mb-4 space-y-2 p-3">
+          <form
+            onSubmit={addEntity}
+            className="panel mb-4 space-y-2 p-3"
+            aria-busy={submitting === "entity"}
+            inert={submitting ? true : undefined}
+          >
+            <p className="section-label">Add new loan</p>
             <div className="flex gap-2">
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={
-                  tab === "pending" ? "e.g. Charity, Car Loan" : "e.g. John Doe"
-                }
-                className="field flex-1 text-sm"
-              />
-              <button type="submit" className="btn-ghost shrink-0">
-                Add
+              <button
+                type="button"
+                onClick={() => setEntityDirection("i_owe")}
+                className={`chip flex-1 ${
+                  entityDirection === "i_owe" ? "chip-active" : "chip-idle"
+                }`}
+              >
+                Loan taken
+              </button>
+              <button
+                type="button"
+                onClick={() => setEntityDirection("they_owe_me")}
+                className={`chip flex-1 ${
+                  entityDirection === "they_owe_me" ? "chip-active" : "chip-idle"
+                }`}
+              >
+                Loan given
               </button>
             </div>
-            <p className="text-xs text-[var(--color-mist)]">
-              Default currency for new entries
-            </p>
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setEntityError("");
+              }}
+              placeholder="Person or entity name"
+              className="field text-sm"
+              required
+            />
             <select
               value={entityCurrency}
               onChange={(e) => setEntityCurrency(e.target.value)}
@@ -241,11 +295,48 @@ export function LoansPage() {
                 </option>
               ))}
             </select>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={initialAmount}
+              onChange={(e) => setInitialAmount(e.target.value)}
+              placeholder="Initial loan amount"
+              className="field text-sm"
+              required
+            />
+            {entityError && (
+              <div
+                role="alert"
+                className="rounded-lg px-3 py-2 text-sm"
+                style={{
+                  color: "var(--color-red)",
+                  background: "rgba(255,69,58,0.08)",
+                  border: "1px solid rgba(255,69,58,0.18)",
+                }}
+              >
+                {entityError}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn-primary text-sm"
+              disabled={Boolean(submitting)}
+            >
+              {submitting === "entity"
+                ? <LoadingLabel>Adding…</LoadingLabel>
+                : entityDirection === "i_owe" ? "Add loan taken" : "Add loan given"}
+            </button>
           </form>
 
           {tab === "pending" && entities.length > 0 && (
-            <form onSubmit={addObligation} className="panel mb-4 space-y-2 p-3">
-              <p className="text-sm text-[var(--color-mist)]">
+            <form
+              onSubmit={addObligation}
+              className="panel mb-4 space-y-2 p-3"
+              aria-busy={submitting === "obligation"}
+              inert={submitting ? true : undefined}
+            >
+              <p className="text-mist text-sm">
                 Add amount you owe (manual)
               </p>
               <select
@@ -279,15 +370,22 @@ export function LoansPage() {
                 placeholder="Amount owed"
                 className="field text-sm"
               />
-              <button type="submit" className="btn-primary text-sm">
-                Add owed amount
+              <button type="submit" className="btn-primary text-sm" disabled={Boolean(submitting)}>
+                {submitting === "obligation"
+                  ? <LoadingLabel>Adding…</LoadingLabel>
+                  : "Add owed amount"}
               </button>
             </form>
           )}
 
           {tab === "takeback" && entities.length > 0 && (
-            <form onSubmit={addLoanTxn} className="panel mb-4 space-y-2 p-3">
-              <p className="text-sm text-[var(--color-mist)]">
+            <form
+              onSubmit={addLoanTxn}
+              className="panel mb-4 space-y-2 p-3"
+              aria-busy={submitting === "loan"}
+              inert={submitting ? true : undefined}
+            >
+              <p className="text-mist text-sm">
                 Record loan or repayment
               </p>
               <select
@@ -342,12 +440,12 @@ export function LoansPage() {
                 className="field text-sm"
               />
               {repaymentMaxCents !== undefined && (
-                <p className="text-xs text-[var(--color-mist)]">
+                <p className="text-mist text-xs">
                   Max {(repaymentMaxCents / 100).toFixed(2)} {loanCurrency}
                 </p>
               )}
-              <button type="submit" className="btn-primary text-sm">
-                Record
+              <button type="submit" className="btn-primary text-sm" disabled={Boolean(submitting)}>
+                {submitting === "loan" ? <LoadingLabel>Recording…</LoadingLabel> : "Record"}
               </button>
             </form>
           )}
@@ -367,13 +465,13 @@ export function LoansPage() {
 
           <div className="space-y-2">
             {entities.length === 0 ? (
-              <p className="text-sm text-[var(--color-mist)]">
+              <p className="text-mist text-sm">
                 No entries yet.
               </p>
             ) : (
               entities.map((e) => (
                 <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
-                  <p className="font-medium text-[var(--color-paper)]">
+                  <p className="text-paper font-medium">
                     {e.name}
                   </p>
                   <EntityBalanceLines

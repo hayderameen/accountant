@@ -3,6 +3,7 @@ import { api, formatMoney, type Account } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { SkeletonList } from "../components/Skeleton";
+import { LoadingLabel } from "../components/LoadingLabel";
 
 export function AccountsPage() {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export function AccountsPage() {
   const [currency, setCurrency] = useState(defaultCurrency);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const load = (showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -51,6 +53,7 @@ export function AccountsPage() {
       return;
     }
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.updateAccount(editingId, {
@@ -69,6 +72,8 @@ export function AccountsPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -87,7 +92,12 @@ export function AccountsPage() {
     <div className="fade-up">
       <h1 className="page-title mb-4">Accounts</h1>
 
-      <form onSubmit={onSubmit} className="panel mb-4 space-y-2 p-3">
+      <form
+        onSubmit={onSubmit}
+        className="panel mb-4 space-y-2 p-3"
+        aria-busy={saving}
+        inert={saving ? true : undefined}
+      >
         <p className="text-sm text-[var(--color-mist)]">
           {editingId ? "Edit account" : "New account"}
         </p>
@@ -124,8 +134,10 @@ export function AccountsPage() {
           </div>
         )}
         <div className="flex gap-2">
-          <button type="submit" className="btn-primary flex-1 text-sm">
-            {editingId ? "Update" : "Add"}
+          <button type="submit" className="btn-primary flex-1 text-sm" disabled={saving}>
+            {saving
+              ? <LoadingLabel>{editingId ? "Updating…" : "Adding…"}</LoadingLabel>
+              : editingId ? "Update" : "Add"}
           </button>
           {editingId && (
             <button type="button" onClick={resetForm} className="btn-ghost">
