@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -15,7 +16,11 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { LoansPage } from './pages/LoansPage';
 import { EntityLoanDetailPage } from './pages/EntityLoanDetailPage';
 import { AutomationsPage } from './pages/AutomationsPage';
-import { AppLoadingScreen } from './components/Skeleton';
+import { AppLoadingScreen, SkeletonStatsCharts } from './components/Skeleton';
+
+const StatsPage = lazy(() =>
+  import('./pages/StatsPage').then((module) => ({ default: module.StatsPage })),
+);
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -50,6 +55,14 @@ export default function App() {
               <Route index element={<DashboardPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="transactions/search" element={<TransactionSearchPage />} />
+              <Route
+                path="stats"
+                element={
+                  <Suspense fallback={<SkeletonStatsCharts />}>
+                    <StatsPage />
+                  </Suspense>
+                }
+              />
               <Route path="add" element={<AddPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="import" element={<ImportPage />} />

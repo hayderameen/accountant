@@ -42,6 +42,25 @@ function LedgerIcon() {
   );
 }
 
+function StatsIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M5 19V10M12 19V5M19 19v-7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3 19.5h18"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function PlusIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -182,7 +201,7 @@ export function AppLayout() {
         }}
       >
         <div
-          className="mx-auto grid max-w-lg grid-cols-3"
+          className="mx-auto grid max-w-lg grid-cols-4"
           style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
         >
           {/* Home */}
@@ -290,6 +309,41 @@ export function AppLayout() {
                   }}
                 >
                   Ledger
+                </span>
+              </div>
+            )}
+          </NavLink>
+
+          {/* Stats */}
+          <NavLink to="/stats" className="flex flex-col items-center pt-2 pb-1">
+            {({ isActive }) => (
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  style={{
+                    display: "flex",
+                    width: 32,
+                    height: 32,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                    background: isActive
+                      ? "rgba(10,132,255,0.14)"
+                      : "transparent",
+                    transition: "color 130ms, background 130ms",
+                  }}
+                >
+                  <StatsIcon />
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.63rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    color: isActive ? "#409cff" : "rgba(235,235,245,0.35)",
+                  }}
+                >
+                  Stats
                 </span>
               </div>
             )}

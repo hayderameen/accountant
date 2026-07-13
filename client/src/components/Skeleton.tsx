@@ -93,6 +93,31 @@ export function SkeletonLoanDetail() {
   );
 }
 
+export function SkeletonStatsCharts() {
+  return (
+    <div className="space-y-6" role="status" aria-label="Loading statistics">
+      <div className="grid grid-cols-2 gap-2">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="panel p-3">
+            <SkeletonBlock className="mb-2 block h-2.5 w-16" />
+            <SkeletonBlock className="block h-4 w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="panel p-3">
+        <SkeletonBlock className="mb-4 block h-2.5 w-28" />
+        <SkeletonBlock className="block h-52 w-full rounded-xl" />
+      </div>
+      <div className="panel p-3">
+        <SkeletonBlock className="mb-4 block h-2.5 w-36" />
+        <div className="flex justify-center">
+          <SkeletonBlock className="block h-44 w-44 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppLoadingScreen() {
   return (
     <div className="flex min-h-dvh items-center justify-center" role="status" aria-label="Loading">

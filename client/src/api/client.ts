@@ -57,6 +57,65 @@ export interface Transaction {
   entityId?: Entity | string;
 }
 
+export type StatsGroupBy = "day" | "week" | "month";
+
+export interface StatsCategoryTotal {
+  categoryId: string | null;
+  categoryName: string;
+  amount: number;
+}
+
+export interface StatsIncomeExpensePoint {
+  bucket: string;
+  label: string;
+  income: number;
+  expense: number;
+}
+
+export interface StatsLoanPoint {
+  bucket: string;
+  label: string;
+  taken: number;
+  given: number;
+  repaymentsMade: number;
+  repaymentsReceived: number;
+}
+
+export interface StatsResponse {
+  range: {
+    from: string;
+    to: string;
+    groupBy: StatsGroupBy;
+    timezone: string;
+  };
+  incomeExpense: Array<{
+    currency: string;
+    income: number;
+    expense: number;
+    net: number;
+    incomeCategories: StatsCategoryTotal[];
+    expenseCategories: StatsCategoryTotal[];
+    series: StatsIncomeExpensePoint[];
+  }>;
+  loans: Array<{
+    currency: string;
+    taken: number;
+    given: number;
+    repaymentsMade: number;
+    repaymentsReceived: number;
+    byEntity: Array<{
+      entityId: string;
+      entityName: string;
+      direction: "i_owe" | "they_owe_me";
+      taken: number;
+      given: number;
+      repaymentsMade: number;
+      repaymentsReceived: number;
+    }>;
+    series: StatsLoanPoint[];
+  }>;
+}
+
 export const api = {
   signup: (data: { email: string; password: string; name?: string }) =>
     request<User>("/auth/signup", {
@@ -153,6 +212,16 @@ export const api = {
     const qs = params ? `?${new URLSearchParams(params)}` : "";
     return request<Transaction[]>(`/transactions${qs}`);
   },
+
+  getStats: (params: {
+    from: string;
+    to: string;
+    groupBy: StatsGroupBy;
+    timezone: string;
+  }) =>
+    request<StatsResponse>(
+      `/stats?${new URLSearchParams(params).toString()}`,
+    ),
 
   searchTransactions: (query: string) =>
     request<Transaction[]>(`/transactions/search?q=${encodeURIComponent(query)}`),

@@ -8,7 +8,6 @@ import {
   type Transaction,
 } from "../api/client";
 import {
-  endOfMonth,
   formatMonthLabel,
   groupByMonthAndDay,
   groupLoansByMonth,
@@ -29,8 +28,8 @@ import {
 } from "../lib/currencyTotals";
 import { TransactionItem } from "../components/TransactionItem";
 import { SkeletonLedger } from "../components/Skeleton";
-
-type RangeMode = "month" | "3m" | "6m" | "year" | "custom";
+import { PeriodSelector } from "../components/PeriodSelector";
+import { getRange, type RangeMode } from "../lib/dateRange";
 
 function SearchIcon() {
   return (
@@ -39,36 +38,6 @@ function SearchIcon() {
       <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
-}
-
-function shiftMonth(d: Date, delta: number): Date {
-  return new Date(d.getFullYear(), d.getMonth() + delta, 1);
-}
-
-function getRange(
-  mode: RangeMode,
-  viewMonth: Date,
-  customFrom: string,
-  customTo: string,
-): { from: Date; to: Date } {
-  const now = new Date();
-  switch (mode) {
-    case "month":
-      return { from: startOfMonth(viewMonth), to: endOfMonth(viewMonth) };
-    case "3m":
-      return { from: startOfMonth(shiftMonth(now, -2)), to: endOfMonth(now) };
-    case "6m":
-      return { from: startOfMonth(shiftMonth(now, -5)), to: endOfMonth(now) };
-    case "year":
-      return { from: startOfMonth(shiftMonth(now, -11)), to: endOfMonth(now) };
-    case "custom":
-      return {
-        from: customFrom
-          ? startOfMonth(new Date(customFrom))
-          : startOfMonth(now),
-        to: customTo ? endOfMonth(new Date(customTo)) : endOfMonth(now),
-      };
-  }
 }
 
 /* ── Sub-components ──────────────────────────────────────────────────────── */
@@ -259,14 +228,6 @@ function SummaryBoxPair({
 
 /* ── Main page ───────────────────────────────────────────────────────────── */
 
-const rangeOptions: { id: RangeMode; label: string }[] = [
-  { id: "month", label: "Month" },
-  { id: "3m", label: "3 mo" },
-  { id: "6m", label: "6 mo" },
-  { id: "year", label: "Year" },
-  { id: "custom", label: "Custom" },
-];
-
 export function TransactionsPage() {
   const navigate = useNavigate();
   const [rangeMode, setRangeMode] = useState<RangeMode>("month");
@@ -434,69 +395,18 @@ export function TransactionsPage() {
         </button>
       </form>
 
-      {/* Range selector */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {rangeOptions.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => setRangeMode(opt.id)}
-            className={`chip ${rangeMode === opt.id ? "chip-active" : "chip-idle"}`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <PeriodSelector
+          rangeMode={rangeMode}
+          onRangeModeChange={setRangeMode}
+          viewMonth={viewMonth}
+          onViewMonthChange={setViewMonth}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomFromChange={setCustomFrom}
+          onCustomToChange={setCustomTo}
+        />
       </div>
-
-      {/* Month nav */}
-      {rangeMode === "month" && (
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setViewMonth((m) => shiftMonth(m, -1))}
-            className="btn-ghost"
-          >
-            ← Prev
-          </button>
-          <span
-            style={{
-              fontSize: "0.88rem",
-              fontWeight: 500,
-              color: "var(--color-paper)",
-            }}
-          >
-            {viewMonth.toLocaleDateString(undefined, {
-              month: "long",
-              year: "numeric",
-            })}
-          </span>
-          <button
-            type="button"
-            onClick={() => setViewMonth((m) => shiftMonth(m, 1))}
-            className="btn-ghost"
-          >
-            Next →
-          </button>
-        </div>
-      )}
-
-      {/* Custom date range */}
-      {rangeMode === "custom" && (
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          <input
-            type="date"
-            value={customFrom}
-            onChange={(e) => setCustomFrom(e.target.value)}
-            className="field text-sm"
-          />
-          <input
-            type="date"
-            value={customTo}
-            onChange={(e) => setCustomTo(e.target.value)}
-            className="field text-sm"
-          />
-        </div>
-      )}
 
       {deleteError && (
         <div

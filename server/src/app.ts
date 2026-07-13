@@ -11,6 +11,7 @@ import importRoutes from "./routes/import.js";
 import settingsRoutes from "./routes/settings.js";
 import automationRoutes from "./routes/automations.js";
 import loanRoutes from "./routes/loans.js";
+import statsRoutes from "./routes/stats.js";
 import { connectDb } from "./lib/db.js";
 
 export const app = express();
@@ -38,6 +39,7 @@ app.use("/api/import", importRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/automations", automationRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/stats", statsRoutes);
 
 // Cached DB connection — reused across warm serverless invocations
 let _dbReady = false;
