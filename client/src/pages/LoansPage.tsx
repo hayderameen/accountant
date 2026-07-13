@@ -3,7 +3,11 @@ import { Link } from "react-router-dom";
 import { api, type EntityWithBalances } from "../api/client";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
-import { SkeletonBlock, SkeletonList, SkeletonSummary } from "../components/Skeleton";
+import {
+  SkeletonBlock,
+  SkeletonList,
+  SkeletonSummary,
+} from "../components/Skeleton";
 import { useAuth } from "../hooks/useAuth";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import {
@@ -196,182 +200,192 @@ export function LoansPage() {
         </div>
       )}
 
-      {!loading && <>
-      <LoanCurrencySummary
-        title="Total remaining"
-        totals={pendingTotals}
-        variant="owed"
-      />
-      <LoanCurrencySummary
-        title="Total owed to you"
-        totals={takeBackTotals}
-        variant="owedToYou"
-      />
-
-      <form onSubmit={addEntity} className="panel mb-4 space-y-2 p-3">
-        <div className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={
-              tab === "pending" ? "e.g. Charity, Car Loan" : "e.g. John Doe"
-            }
-            className="field flex-1 text-sm"
+      {!loading && (
+        <>
+          <LoanCurrencySummary
+            title="Total remaining"
+            totals={pendingTotals}
+            variant="owed"
           />
-          <button type="submit" className="btn-ghost shrink-0">
-            Add
-          </button>
-        </div>
-        <p className="text-xs text-[var(--color-mist)]">
-          Default currency for new entries
-        </p>
-        <select
-          value={entityCurrency}
-          onChange={(e) => setEntityCurrency(e.target.value)}
-          className="field text-sm"
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </form>
-
-      {tab === "pending" && entities.length > 0 && (
-        <form onSubmit={addObligation} className="panel mb-4 space-y-2 p-3">
-          <p className="text-sm text-[var(--color-mist)]">
-            Add amount you owe (manual)
-          </p>
-          <select
-            value={obligationEntity}
-            onChange={(e) => setObligationEntity(e.target.value)}
-            className="field text-sm"
-          >
-            <option value="">Select pending loan</option>
-            {entities.map((e) => (
-              <option key={e._id} value={e._id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={obligationCurrency}
-            onChange={(e) => setObligationCurrency(e.target.value)}
-            className="field text-sm"
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount owed"
-            className="field text-sm"
+          <LoanCurrencySummary
+            title="Total owed to you"
+            totals={takeBackTotals}
+            variant="owedToYou"
           />
-          <button type="submit" className="btn-primary text-sm">
-            Add owed amount
-          </button>
-        </form>
-      )}
 
-      {tab === "takeback" && entities.length > 0 && (
-        <form onSubmit={addLoanTxn} className="panel mb-4 space-y-2 p-3">
-          <p className="text-sm text-[var(--color-mist)]">
-            Record loan or repayment
-          </p>
-          <select
-            value={selectedEntity}
-            onChange={(e) => setSelectedEntity(e.target.value)}
-            className="field text-sm"
-          >
-            <option value="">Select person</option>
-            {entities.map((e) => (
-              <option key={e._id} value={e._id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={loanAction}
-            onChange={(e) => setLoanAction(e.target.value as typeof loanAction)}
-            className="field text-sm"
-          >
-            <option value="loan_given">They borrowed (increase owed)</option>
-            <option value="repayment_received">
-              They repaid (decrease owed)
-            </option>
-          </select>
-          <select
-            value={loanCurrency}
-            onChange={(e) => setLoanCurrency(e.target.value)}
-            className="field text-sm"
-          >
-            {loanCurrencyOptions.length === 0 ? (
-              <option value="">No amounts owed</option>
-            ) : (
-              loanCurrencyOptions.map((c) => (
+          <form onSubmit={addEntity} className="panel mb-4 space-y-2 p-3">
+            <div className="flex gap-2">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={
+                  tab === "pending" ? "e.g. Charity, Car Loan" : "e.g. John Doe"
+                }
+                className="field flex-1 text-sm"
+              />
+              <button type="submit" className="btn-ghost shrink-0">
+                Add
+              </button>
+            </div>
+            <p className="text-xs text-[var(--color-mist)]">
+              Default currency for new entries
+            </p>
+            <select
+              value={entityCurrency}
+              onChange={(e) => setEntityCurrency(e.target.value)}
+              className="field text-sm"
+            >
+              {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
+              ))}
+            </select>
+          </form>
+
+          {tab === "pending" && entities.length > 0 && (
+            <form onSubmit={addObligation} className="panel mb-4 space-y-2 p-3">
+              <p className="text-sm text-[var(--color-mist)]">
+                Add amount you owe (manual)
+              </p>
+              <select
+                value={obligationEntity}
+                onChange={(e) => setObligationEntity(e.target.value)}
+                className="field text-sm"
+              >
+                <option value="">Select person/entity</option>
+                {entities.map((e) => (
+                  <option key={e._id} value={e._id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={obligationCurrency}
+                onChange={(e) => setObligationCurrency(e.target.value)}
+                className="field text-sm"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Amount owed"
+                className="field text-sm"
+              />
+              <button type="submit" className="btn-primary text-sm">
+                Add owed amount
+              </button>
+            </form>
+          )}
+
+          {tab === "takeback" && entities.length > 0 && (
+            <form onSubmit={addLoanTxn} className="panel mb-4 space-y-2 p-3">
+              <p className="text-sm text-[var(--color-mist)]">
+                Record loan or repayment
+              </p>
+              <select
+                value={selectedEntity}
+                onChange={(e) => setSelectedEntity(e.target.value)}
+                className="field text-sm"
+              >
+                <option value="">Select person/entity</option>
+                {entities.map((e) => (
+                  <option key={e._id} value={e._id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={loanAction}
+                onChange={(e) =>
+                  setLoanAction(e.target.value as typeof loanAction)
+                }
+                className="field text-sm"
+              >
+                <option value="loan_given">
+                  They borrowed (increase owed)
+                </option>
+                <option value="repayment_received">
+                  They repaid (decrease owed)
+                </option>
+              </select>
+              <select
+                value={loanCurrency}
+                onChange={(e) => setLoanCurrency(e.target.value)}
+                className="field text-sm"
+              >
+                {loanCurrencyOptions.length === 0 ? (
+                  <option value="">No amounts owed</option>
+                ) : (
+                  loanCurrencyOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))
+                )}
+              </select>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={repaymentMaxCents ? repaymentMaxCents / 100 : undefined}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Amount"
+                className="field text-sm"
+              />
+              {repaymentMaxCents !== undefined && (
+                <p className="text-xs text-[var(--color-mist)]">
+                  Max {(repaymentMaxCents / 100).toFixed(2)} {loanCurrency}
+                </p>
+              )}
+              <button type="submit" className="btn-primary text-sm">
+                Record
+              </button>
+            </form>
+          )}
+
+          {error && (
+            <div
+              className="mb-3 rounded-lg px-3 py-2 text-sm"
+              style={{
+                color: "var(--color-red)",
+                background: "rgba(248,113,113,0.08)",
+                border: "1px solid rgba(248,113,113,0.18)",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {entities.length === 0 ? (
+              <p className="text-sm text-[var(--color-mist)]">
+                No entries yet.
+              </p>
+            ) : (
+              entities.map((e) => (
+                <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
+                  <p className="font-medium text-[var(--color-paper)]">
+                    {e.name}
+                  </p>
+                  <EntityBalanceLines
+                    balances={e.balancesByCurrency}
+                    variant={tab === "pending" ? "owed" : "owedToYou"}
+                  />
+                </Link>
               ))
             )}
-          </select>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            max={repaymentMaxCents ? repaymentMaxCents / 100 : undefined}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount"
-            className="field text-sm"
-          />
-          {repaymentMaxCents !== undefined && (
-            <p className="text-xs text-[var(--color-mist)]">
-              Max {(repaymentMaxCents / 100).toFixed(2)} {loanCurrency}
-            </p>
-          )}
-          <button type="submit" className="btn-primary text-sm">
-            Record
-          </button>
-        </form>
+          </div>
+        </>
       )}
-
-      {error && (
-        <div
-          className="mb-3 rounded-lg px-3 py-2 text-sm"
-          style={{
-            color: "var(--color-red)",
-            background: "rgba(248,113,113,0.08)",
-            border: "1px solid rgba(248,113,113,0.18)",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {entities.length === 0 ? (
-          <p className="text-sm text-[var(--color-mist)]">No entries yet.</p>
-        ) : (
-          entities.map((e) => (
-            <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
-              <p className="font-medium text-[var(--color-paper)]">{e.name}</p>
-              <EntityBalanceLines
-                balances={e.balancesByCurrency}
-                variant={tab === "pending" ? "owed" : "owedToYou"}
-              />
-            </Link>
-          ))
-        )}
-      </div>
-      </>}
     </div>
   );
 }

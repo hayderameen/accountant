@@ -76,8 +76,26 @@ export function DashboardPage() {
     }
   };
 
-  const pendingTotals = useMemo(() => flattenEntityBalances(pendingLoans), [pendingLoans]);
-  const takeBackTotals = useMemo(() => flattenEntityBalances(takeBack), [takeBack]);
+  const activePendingLoans = useMemo(
+    () => pendingLoans.filter((entity) =>
+      entity.balancesByCurrency.some((balance) => balance.balance > 0),
+    ),
+    [pendingLoans],
+  );
+  const activeTakeBack = useMemo(
+    () => takeBack.filter((entity) =>
+      entity.balancesByCurrency.some((balance) => balance.balance > 0),
+    ),
+    [takeBack],
+  );
+  const pendingTotals = useMemo(
+    () => flattenEntityBalances(activePendingLoans),
+    [activePendingLoans],
+  );
+  const takeBackTotals = useMemo(
+    () => flattenEntityBalances(activeTakeBack),
+    [activeTakeBack],
+  );
 
   return (
     <div className="space-y-7">
@@ -98,10 +116,10 @@ export function DashboardPage() {
         ) : <>
           <LoanCurrencySummary title="Total remaining" totals={pendingTotals} variant="owed" />
           <div className="space-y-2">
-          {pendingLoans.length === 0 ? (
+          {activePendingLoans.length === 0 ? (
             <EmptyState text="Nothing owed yet." />
           ) : (
-            pendingLoans.map((e) => (
+            activePendingLoans.map((e) => (
               <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
                 <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
                   {e.name}
@@ -125,10 +143,10 @@ export function DashboardPage() {
         ) : <>
           <LoanCurrencySummary title="Total owed to you" totals={takeBackTotals} variant="owedToYou" />
           <div className="space-y-2">
-          {takeBack.length === 0 ? (
+          {activeTakeBack.length === 0 ? (
             <EmptyState text="No one owes you yet." />
           ) : (
-            takeBack.map((e) => (
+            activeTakeBack.map((e) => (
               <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
                 <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
                   {e.name}

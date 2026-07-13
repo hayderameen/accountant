@@ -155,7 +155,7 @@ export function AutomationsPage() {
             className="field text-sm"
             required
           >
-            <option value="">Select pending loan</option>
+            <option value="">Select person/entity</option>
             {pendingLoans.map((e) => (
               <option key={e._id} value={e._id}>
                 {e.name}
@@ -165,7 +165,14 @@ export function AutomationsPage() {
         )}
 
         {error && (
-          <div className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--color-red)", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)" }}>
+          <div
+            className="rounded-lg px-3 py-2 text-sm"
+            style={{
+              color: "var(--color-red)",
+              background: "rgba(248,113,113,0.08)",
+              border: "1px solid rgba(248,113,113,0.18)",
+            }}
+          >
             {error}
           </div>
         )}
@@ -179,7 +186,9 @@ export function AutomationsPage() {
         {loading ? (
           <SkeletonList count={3} />
         ) : automations.length === 0 ? (
-          <p className="text-sm text-[var(--color-mist)]">No automations yet.</p>
+          <p className="text-sm text-[var(--color-mist)]">
+            No automations yet.
+          </p>
         ) : (
           automations.map((a) => (
             <div key={a._id} className="list-row items-center">
