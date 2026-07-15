@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { api, formatMoney, type Account } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { SkeletonList } from "../components/Skeleton";
 import { LoadingLabel } from "../components/LoadingLabel";
@@ -8,25 +9,17 @@ import { LoadingLabel } from "../components/LoadingLabel";
 export function AccountsPage() {
   const { user } = useAuth();
   const defaultCurrency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const { data, loading, reload } = useCachedQuery(
+    "accounts",
+    () => api.getAccounts(),
+  );
+  const accounts = data ?? [];
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [balance, setBalance] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const load = (showLoading = false) => {
-    if (showLoading) setLoading(true);
-    return api.getAccounts().then(setAccounts).finally(() => {
-      if (showLoading) setLoading(false);
-    });
-  };
-
-  useEffect(() => {
-    load(true);
-  }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -69,7 +62,7 @@ export function AccountsPage() {
         });
       }
       resetForm();
-      await load();
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -82,7 +75,7 @@ export function AccountsPage() {
     try {
       await api.deleteAccount(id);
       if (editingId === id) resetForm();
-      await load();
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
     }

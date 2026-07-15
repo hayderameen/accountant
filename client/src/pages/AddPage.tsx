@@ -8,6 +8,7 @@ import {
   type EntityWithBalances,
 } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { balanceForCurrency, owedCurrenciesFromEntities } from "../lib/loanTotals";
 import { SkeletonForm } from "../components/Skeleton";
@@ -15,12 +16,15 @@ import { LoadingLabel } from "../components/LoadingLabel";
 
 type AddType = "expense" | "income" | "transfer" | "repayment";
 
+type EntitiesData = {
+  pendingLoans: EntityWithBalances[];
+  takeBack: EntityWithBalances[];
+};
+
 export function AddPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const defaultCurrency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [type, setType] = useState<AddType>("expense");
   const [accountId, setAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
@@ -29,36 +33,53 @@ export function AddPage() {
   const [memo, setMemo] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
   const [entityId, setEntityId] = useState("");
-  const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
-  const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
   const [newAccountName, setNewAccountName] = useState("");
   const [error, setError] = useState("");
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingEntities, setLoadingEntities] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
+
+  const needsEntities = type === "expense" || type === "repayment";
+  const needsCategories = type !== "transfer" && type !== "repayment";
+  const catType = type === "income" ? "income" : "expense";
+
+  const {
+    data: accountsData,
+    loading: loadingAccounts,
+    setData: setAccountsData,
+  } = useCachedQuery<Account[]>("accounts", () => api.getAccounts());
+  const accounts = accountsData ?? [];
+
+  const { data: categoriesData, loading: loadingCategories } = useCachedQuery<
+    Category[]
+  >(
+    needsCategories ? `categories:${catType}` : null,
+    () => api.getCategories(catType),
+    [catType, needsCategories],
+  );
+  const categories = needsCategories ? (categoriesData ?? []) : [];
+
+  const { data: entitiesData, loading: loadingEntities } =
+    useCachedQuery<EntitiesData>(
+      needsEntities ? "add:entities" : null,
+      async () => {
+        const [pendingLoans, takeBack] = await Promise.all([
+          api.getEntities("i_owe"),
+          api.getEntities("they_owe_me"),
+        ]);
+        return { pendingLoans, takeBack };
+      },
+      [needsEntities, currency],
+    );
+  const pendingLoans = entitiesData?.pendingLoans ?? [];
+  const takeBack = entitiesData?.takeBack ?? [];
 
   useEffect(() => {
     setCurrency(defaultCurrency);
   }, [defaultCurrency]);
 
-  const loadEntities = () => {
-    setLoadingEntities(true);
-    Promise.all([
-      api.getEntities("i_owe"),
-      api.getEntities("they_owe_me"),
-    ]).then(([pending, takeback]) => {
-      setPendingLoans(pending);
-      setTakeBack(takeback);
-    }).finally(() => setLoadingEntities(false));
-  };
-
   useEffect(() => {
-    if (type === "expense" || type === "repayment") {
-      loadEntities();
-    }
-  }, [type, currency]);
+    if (accounts[0] && !accountId) setAccountId(accounts[0]._id);
+  }, [accounts, accountId]);
 
   useEffect(() => {
     if (type !== "repayment") return;
@@ -74,30 +95,12 @@ export function AddPage() {
     setCategoryId("");
   }, [type]);
 
-  useEffect(() => {
-    api.getAccounts().then((a) => {
-      setAccounts(a);
-      if (a[0]) setAccountId(a[0]._id);
-    }).finally(() => setLoadingAccounts(false));
-  }, []);
-
-  useEffect(() => {
-    if (type === "transfer" || type === "repayment") {
-      setCategories([]);
-      setLoadingCategories(false);
-      return;
-    }
-    setLoadingCategories(true);
-    const catType = type === "income" ? "income" : "expense";
-    api.getCategories(catType).then(setCategories).finally(() => setLoadingCategories(false));
-  }, [type]);
-
   const createAccount = async () => {
     if (!newAccountName.trim()) return;
     setCreatingAccount(true);
     try {
       const account = await api.createAccount({ name: newAccountName.trim() });
-      setAccounts((prev) => [...prev, account]);
+      setAccountsData((prev) => [...(prev ?? []), account]);
       setAccountId(account._id);
       setNewAccountName("");
     } finally {

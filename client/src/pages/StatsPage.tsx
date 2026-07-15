@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
   api,
   type StatsGroupBy,
@@ -11,6 +11,7 @@ import {
   LoanCurrencyStats,
   PeriodComparisonCharts,
 } from "../components/stats/StatsCharts";
+import { useCachedQuery } from "../hooks/useDataSync";
 import {
   getRange,
   monthRange,
@@ -23,6 +24,13 @@ import { startOfMonth } from "../lib/groupTransactions";
 type StatsTab = "incomeExpense" | "loans";
 type ViewMode = "range" | "compare";
 
+type StatsPayload =
+  | { mode: "range"; stats: StatsResponse }
+  | {
+      mode: "compare";
+      comparison: Array<{ label: string; data: StatsResponse }>;
+    };
+
 export function StatsPage() {
   const now = new Date();
   const [tab, setTab] = useState<StatsTab>("incomeExpense");
@@ -32,17 +40,11 @@ export function StatsPage() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [groupBy, setGroupBy] = useState<StatsGroupBy>("day");
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [comparison, setComparison] = useState<
-    Array<{ label: string; data: StatsResponse }>
-  >([]);
   const [compareMonth, setCompareMonth] = useState(monthValue(now));
   const [selectedMonths, setSelectedMonths] = useState<string[]>([
     monthValue(shiftMonth(now, -1)),
     monthValue(now),
   ]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const range = useMemo(
     () => getRange(rangeMode, viewMonth, customFrom, customTo),
@@ -52,67 +54,43 @@ export function StatsPage() {
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const rangeFrom = range.from.toISOString();
   const rangeTo = range.to.toISOString();
+  const monthsKey = selectedMonths.join(",");
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
+  const cacheKey =
+    viewMode === "compare"
+      ? `stats:compare:${groupBy}:${timezone}:${monthsKey}`
+      : `stats:range:${groupBy}:${timezone}:${rangeFrom}:${rangeTo}`;
 
-    const request = (from: string, to: string) =>
-      api.getStats({
-        from,
-        to,
-        groupBy,
-        timezone,
-      });
+  const { data, loading, error } = useCachedQuery<StatsPayload>(
+    cacheKey,
+    async () => {
+      const request = (from: string, to: string) =>
+        api.getStats({ from, to, groupBy, timezone });
 
-    if (viewMode === "compare") {
-      Promise.all(
-        selectedMonths.map(async (value) => {
-          const period = monthRange(value);
-          return {
-            label: period.label,
-            data: await request(period.from.toISOString(), period.to.toISOString()),
-          };
-        }),
-      )
-        .then((rows) => {
-          if (!cancelled) setComparison(rows);
-        })
-        .catch((err) => {
-          if (!cancelled) {
-            setError(err instanceof Error ? err.message : "Failed to load stats");
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    } else {
-      request(rangeFrom, rangeTo)
-        .then((result) => {
-          if (!cancelled) setStats(result);
-        })
-        .catch((err) => {
-          if (!cancelled) {
-            setError(err instanceof Error ? err.message : "Failed to load stats");
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    }
+      if (viewMode === "compare") {
+        const comparison = await Promise.all(
+          selectedMonths.map(async (value) => {
+            const period = monthRange(value);
+            return {
+              label: period.label,
+              data: await request(
+                period.from.toISOString(),
+                period.to.toISOString(),
+              ),
+            };
+          }),
+        );
+        return { mode: "compare" as const, comparison };
+      }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    viewMode,
-    rangeFrom,
-    rangeTo,
-    groupBy,
-    timezone,
-    selectedMonths,
-  ]);
+      const stats = await request(rangeFrom, rangeTo);
+      return { mode: "range" as const, stats };
+    },
+    [viewMode, rangeFrom, rangeTo, groupBy, timezone, monthsKey],
+  );
+
+  const stats = data?.mode === "range" ? data.stats : null;
+  const comparison = data?.mode === "compare" ? data.comparison : [];
 
   const addComparisonMonth = (event: FormEvent) => {
     event.preventDefault();

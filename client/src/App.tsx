@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { DataSyncProvider } from './hooks/useDataSync';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -32,49 +33,51 @@ function PublicOnly({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <PublicOnly>
-                <LoginPage />
-              </PublicOnly>
-            }
-          />
-          <Route
-            path="/signup"
-            element={
-              <PublicOnly>
-                <SignupPage />
-              </PublicOnly>
-            }
-          />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="transactions" element={<TransactionsPage />} />
-              <Route path="transactions/search" element={<TransactionSearchPage />} />
-              <Route
-                path="stats"
-                element={
-                  <Suspense fallback={<SkeletonStatsCharts />}>
-                    <StatsPage />
-                  </Suspense>
-                }
-              />
-              <Route path="add" element={<AddPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="import" element={<ImportPage />} />
-              <Route path="accounts" element={<AccountsPage />} />
-              <Route path="categories" element={<CategoriesPage />} />
-              <Route path="loans" element={<LoansPage />} />
-              <Route path="loans/:entityId" element={<EntityLoanDetailPage />} />
-              <Route path="automations" element={<AutomationsPage />} />
+      <DataSyncProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <PublicOnly>
+                  <LoginPage />
+                </PublicOnly>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <PublicOnly>
+                  <SignupPage />
+                </PublicOnly>
+              }
+            />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<DashboardPage />} />
+                <Route path="transactions" element={<TransactionsPage />} />
+                <Route path="transactions/search" element={<TransactionSearchPage />} />
+                <Route
+                  path="stats"
+                  element={
+                    <Suspense fallback={<SkeletonStatsCharts />}>
+                      <StatsPage />
+                    </Suspense>
+                  }
+                />
+                <Route path="add" element={<AddPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="import" element={<ImportPage />} />
+                <Route path="accounts" element={<AccountsPage />} />
+                <Route path="categories" element={<CategoriesPage />} />
+                <Route path="loans" element={<LoansPage />} />
+                <Route path="loans/:entityId" element={<EntityLoanDetailPage />} />
+                <Route path="automations" element={<AutomationsPage />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </DataSyncProvider>
     </AuthProvider>
   );
 }

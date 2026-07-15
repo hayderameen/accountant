@@ -344,10 +344,15 @@ export const api = {
     entityId: string,
     totalDue: number,
     currency?: string,
+    memo?: string,
   ) =>
     request<Obligation>(`/entities/${entityId}/obligations`, {
       method: "POST",
-      body: JSON.stringify({ totalDue, currency }),
+      body: JSON.stringify({
+        totalDue,
+        currency,
+        ...(memo ? { memo } : {}),
+      }),
     }),
 
   createPaymentBack: (data: {
@@ -447,6 +452,7 @@ export interface Obligation {
   totalDue: number;
   paid: number;
   currency?: string;
+  memo?: string;
   status: "pending" | "partial" | "fulfilled";
   createdAt?: string;
 }

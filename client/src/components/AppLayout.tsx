@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { DataSyncStatusBar } from "./DataSyncStatusBar";
 
 const secondaryLinks = [
   { to: "/accounts", label: "Accounts" },
@@ -132,6 +133,7 @@ export function AppLayout() {
           borderBottom: "0.5px solid rgba(84,84,88,0.5)",
         }}
       >
+        <DataSyncStatusBar />
         {/* Brand row */}
         <div className="flex items-center justify-between gap-3 pb-3">
           <div className="flex min-w-0 items-center gap-2.5">

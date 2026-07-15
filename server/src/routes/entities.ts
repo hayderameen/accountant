@@ -231,6 +231,7 @@ router.get("/:id/summary", async (req, res) => {
 const manualObligationSchema = z.object({
   totalDue: z.number().positive(),
   currency: z.string().optional(),
+  memo: z.string().optional(),
 });
 
 router.post("/:id/obligations", async (req, res) => {
@@ -255,6 +256,7 @@ router.post("/:id/obligations", async (req, res) => {
     entity.currency ?? "PKR",
   );
 
+  const memo = parsed.data.memo?.trim();
   const obligation = await Obligation.create({
     userId: req.userId,
     entityId: entity._id,
@@ -262,6 +264,7 @@ router.post("/:id/obligations", async (req, res) => {
     currency,
     paid: 0,
     status: "pending",
+    ...(memo ? { memo } : {}),
   });
 
   res.status(201).json(obligation);

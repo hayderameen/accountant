@@ -2,25 +2,22 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, type Category } from '../api/client';
 import { SkeletonList } from '../components/Skeleton';
 import { LoadingLabel } from '../components/LoadingLabel';
+import { useCachedQuery } from '../hooks/useDataSync';
 
 export function CategoriesPage() {
   const [type, setType] = useState<'expense' | 'income'>('expense');
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data, loading, reload } = useCachedQuery(
+    `categories:${type}`,
+    () => api.getCategories(type),
+    [type],
+  );
+  const categories = data ?? [];
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const load = (showLoading = false) => {
-    if (showLoading) setLoading(true);
-    return api.getCategories(type).then(setCategories).finally(() => {
-      if (showLoading) setLoading(false);
-    });
-  };
-
   useEffect(() => {
-    load(true);
     resetForm();
   }, [type]);
 
@@ -49,7 +46,7 @@ export function CategoriesPage() {
         await api.createCategory({ name: name.trim(), type });
       }
       resetForm();
-      await load();
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -62,7 +59,7 @@ export function CategoriesPage() {
     try {
       await api.deleteCategory(id);
       if (editingId === id) resetForm();
-      await load();
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
     }

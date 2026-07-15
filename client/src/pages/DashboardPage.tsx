@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type EntityWithBalances, type Transaction } from "../api/client";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
 import { TransactionItem } from "../components/TransactionItem";
 import { SkeletonList, SkeletonSummary } from "../components/Skeleton";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { flattenEntityBalances } from "../lib/loanTotals";
 
 function SectionHeader({
@@ -40,52 +41,65 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+type DashboardData = {
+  pendingLoans: EntityWithBalances[];
+  takeBack: EntityWithBalances[];
+  transactions: Transaction[];
+};
+
 export function DashboardPage() {
-  const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
-  const [takeBack, setTakeBack]         = useState<EntityWithBalances[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [deleteError, setDeleteError]   = useState("");
-  const [loading, setLoading]           = useState(true);
+  const [deleteError, setDeleteError] = useState("");
+  const { data, loading, reload, setData } = useCachedQuery<DashboardData>(
+    "dashboard",
+    async () => {
+      const [pending, takeback, txns] = await Promise.all([
+        api.getEntities("i_owe"),
+        api.getEntities("they_owe_me"),
+        api.getTransactions(),
+      ]);
+      return {
+        pendingLoans: pending,
+        takeBack: takeback,
+        transactions: txns.slice(0, 5),
+      };
+    },
+  );
 
-  const load = (showLoading = false) => {
-    if (showLoading) setLoading(true);
-    return Promise.all([
-      api.getEntities("i_owe"),
-      api.getEntities("they_owe_me"),
-      api.getTransactions(),
-    ]).then(([pending, takeback, txns]) => {
-      setPendingLoans(pending);
-      setTakeBack(takeback);
-      setTransactions(txns.slice(0, 5));
-    }).finally(() => {
-      if (showLoading) setLoading(false);
-    });
-  };
-
-  useEffect(() => { load(true); }, []);
+  const pendingLoans = data?.pendingLoans ?? [];
+  const takeBack = data?.takeBack ?? [];
+  const transactions = data?.transactions ?? [];
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this transaction?")) return;
     setDeleteError("");
     try {
       await api.deleteTransaction(id);
-      setTransactions((prev) => prev.filter((t) => t._id !== id));
-      await load();
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              transactions: prev.transactions.filter((t) => t._id !== id),
+            }
+          : prev,
+      );
+      await reload();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Delete failed");
     }
   };
 
   const activePendingLoans = useMemo(
-    () => pendingLoans.filter((entity) =>
-      entity.balancesByCurrency.some((balance) => balance.balance > 0),
-    ),
+    () =>
+      pendingLoans.filter((entity) =>
+        entity.balancesByCurrency.some((balance) => balance.balance > 0),
+      ),
     [pendingLoans],
   );
   const activeTakeBack = useMemo(
-    () => takeBack.filter((entity) =>
-      entity.balancesByCurrency.some((balance) => balance.balance > 0),
-    ),
+    () =>
+      takeBack.filter((entity) =>
+        entity.balancesByCurrency.some((balance) => balance.balance > 0),
+      ),
     [takeBack],
   );
   const pendingTotals = useMemo(
@@ -99,13 +113,11 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-7">
-      {/* ── Header ── */}
       <div className="fade-up">
         <p className="section-label mb-1.5">Overview</p>
         <h1 className="page-title">Dashboard</h1>
       </div>
 
-      {/* ── Pending loans ── */}
       <section className="fade-up fade-up-delay-1">
         <SectionHeader label="Pending loans" linkTo="/loans" />
         {loading ? (
@@ -113,26 +125,34 @@ export function DashboardPage() {
             <SkeletonSummary />
             <SkeletonList count={3} subtitle={false} />
           </>
-        ) : <>
-          <LoanCurrencySummary title="Total remaining" totals={pendingTotals} variant="owed" />
-          <div className="space-y-2">
-          {activePendingLoans.length === 0 ? (
-            <EmptyState text="Nothing owed yet." />
-          ) : (
-            activePendingLoans.map((e) => (
-              <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
-                <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
-                  {e.name}
-                </span>
-                <EntityBalanceLines balances={e.balancesByCurrency} variant="owed" />
-              </Link>
-            ))
-          )}
-          </div>
-        </>}
+        ) : (
+          <>
+            <LoanCurrencySummary
+              title="Total remaining"
+              totals={pendingTotals}
+              variant="owed"
+            />
+            <div className="space-y-2">
+              {activePendingLoans.length === 0 ? (
+                <EmptyState text="Nothing owed yet." />
+              ) : (
+                activePendingLoans.map((e) => (
+                  <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
+                    <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
+                      {e.name}
+                    </span>
+                    <EntityBalanceLines
+                      balances={e.balancesByCurrency}
+                      variant="owed"
+                    />
+                  </Link>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </section>
 
-      {/* ── Money to take back ── */}
       <section className="fade-up fade-up-delay-2">
         <SectionHeader label="Money to take back" linkTo="/loans" />
         {loading ? (
@@ -140,26 +160,34 @@ export function DashboardPage() {
             <SkeletonSummary />
             <SkeletonList count={3} subtitle={false} />
           </>
-        ) : <>
-          <LoanCurrencySummary title="Total owed to you" totals={takeBackTotals} variant="owedToYou" />
-          <div className="space-y-2">
-          {activeTakeBack.length === 0 ? (
-            <EmptyState text="No one owes you yet." />
-          ) : (
-            activeTakeBack.map((e) => (
-              <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
-                <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
-                  {e.name}
-                </span>
-                <EntityBalanceLines balances={e.balancesByCurrency} variant="owedToYou" />
-              </Link>
-            ))
-          )}
-          </div>
-        </>}
+        ) : (
+          <>
+            <LoanCurrencySummary
+              title="Total owed to you"
+              totals={takeBackTotals}
+              variant="owedToYou"
+            />
+            <div className="space-y-2">
+              {activeTakeBack.length === 0 ? (
+                <EmptyState text="No one owes you yet." />
+              ) : (
+                activeTakeBack.map((e) => (
+                  <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
+                    <span style={{ fontWeight: 500, color: "var(--color-paper)" }}>
+                      {e.name}
+                    </span>
+                    <EntityBalanceLines
+                      balances={e.balancesByCurrency}
+                      variant="owedToYou"
+                    />
+                  </Link>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </section>
 
-      {/* ── Recent transactions ── */}
       <section className="fade-up fade-up-delay-3">
         <SectionHeader label="Recent transactions" />
         {deleteError && (
@@ -174,15 +202,23 @@ export function DashboardPage() {
             {deleteError}
           </p>
         )}
-        {loading ? <SkeletonList count={4} /> : <div className="space-y-2">
-          {transactions.length === 0 ? (
-            <EmptyState text="No transactions yet." />
-          ) : (
-            transactions.map((t) => (
-              <TransactionItem key={t._id} transaction={t} onDelete={handleDelete} />
-            ))
-          )}
-        </div>}
+        {loading ? (
+          <SkeletonList count={4} />
+        ) : (
+          <div className="space-y-2">
+            {transactions.length === 0 ? (
+              <EmptyState text="No transactions yet." />
+            ) : (
+              transactions.map((t) => (
+                <TransactionItem
+                  key={t._id}
+                  transaction={t}
+                  onDelete={handleDelete}
+                />
+              ))
+            )}
+          </div>
+        )}
       </section>
     </div>
   );

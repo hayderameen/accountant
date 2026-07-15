@@ -10,6 +10,7 @@ const obligationSchema = new Schema(
     paid: { type: Number, default: 0 },
     currency: { type: String, default: 'PKR' },
     status: { type: String, enum: ['pending', 'partial', 'fulfilled'], default: 'pending' },
+    memo: { type: String, trim: true },
   },
   { timestamps: true }
 );

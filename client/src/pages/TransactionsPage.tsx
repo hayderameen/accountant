@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   api,
@@ -7,6 +7,7 @@ import {
   type Obligation,
   type Transaction,
 } from "../api/client";
+import { useCachedQuery } from "../hooks/useDataSync";
 import {
   formatMonthLabel,
   groupByMonthAndDay,
@@ -228,16 +229,18 @@ function SummaryBoxPair({
 
 /* ── Main page ───────────────────────────────────────────────────────────── */
 
+type LedgerData = {
+  transactions: Transaction[];
+  loans: LoanTransaction[];
+  obligations: Obligation[];
+};
+
 export function TransactionsPage() {
   const navigate = useNavigate();
   const [rangeMode, setRangeMode] = useState<RangeMode>("month");
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loans, setLoans] = useState<LoanTransaction[]>([]);
-  const [obligations, setObligations] = useState<Obligation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [deleteError, setDeleteError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -245,30 +248,39 @@ export function TransactionsPage() {
     () => getRange(rangeMode, viewMonth, customFrom, customTo),
     [rangeMode, viewMonth, customFrom, customTo],
   );
+  const fromStr = toApiDate(from);
+  const toStr = toApiDate(to);
 
-  useEffect(() => {
-    setLoading(true);
-    const fromStr = toApiDate(from);
-    const toStr = toApiDate(to);
-    Promise.all([
-      api.getTransactions({ from: fromStr, to: toStr }),
-      api.getLoanTransactions({ from: fromStr, to: toStr }),
-      api.getAllObligations({ from: fromStr, to: toStr }),
-    ])
-      .then(([txns, loanTxns, obls]) => {
-        setTransactions(txns);
-        setLoans(loanTxns);
-        setObligations(obls);
-      })
-      .finally(() => setLoading(false));
-  }, [from, to]);
+  const { data, loading, setData } = useCachedQuery<LedgerData>(
+    `ledger:${fromStr}:${toStr}`,
+    async () => {
+      const [transactions, loans, obligations] = await Promise.all([
+        api.getTransactions({ from: fromStr, to: toStr }),
+        api.getLoanTransactions({ from: fromStr, to: toStr }),
+        api.getAllObligations({ from: fromStr, to: toStr }),
+      ]);
+      return { transactions, loans, obligations };
+    },
+    [fromStr, toStr],
+  );
+
+  const transactions = data?.transactions ?? [];
+  const loans = data?.loans ?? [];
+  const obligations = data?.obligations ?? [];
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this transaction?")) return;
     setDeleteError("");
     try {
       await api.deleteTransaction(id);
-      setTransactions((prev) => prev.filter((t) => t._id !== id));
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              transactions: prev.transactions.filter((t) => t._id !== id),
+            }
+          : prev,
+      );
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Delete failed");
     }

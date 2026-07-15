@@ -14,6 +14,7 @@ import { LoanActivityItem } from "../components/LoanActivityItem";
 import { SkeletonLoanDetail } from "../components/Skeleton";
 import { LoadingLabel } from "../components/LoadingLabel";
 import { useAuth } from "../hooks/useAuth";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { groupActivityByMonthAndDay } from "../lib/groupActivity";
 import { owedCurrenciesFromBalances } from "../lib/loanTotals";
@@ -22,16 +23,18 @@ function balanceInCurrency(balances: CurrencyBalance[], currency: string): numbe
   return balances.find((b) => b.currency === currency)?.balance ?? 0;
 }
 
+type EntityDetailData = {
+  entity: Entity;
+  activity: EntityActivityItem[];
+  balances: CurrencyBalance[];
+  accounts: Account[];
+};
+
 export function EntityLoanDetailPage() {
   const { entityId } = useParams<{ entityId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const defaultCurrency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
-  const [entity, setEntity] = useState<Entity | null>(null);
-  const [activity, setActivity] = useState<EntityActivityItem[]>([]);
-  const [balances, setBalances] = useState<CurrencyBalance[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<"add" | "repay">("repay");
   const [currency, setCurrency] = useState(defaultCurrency);
   const [accountId, setAccountId] = useState("");
@@ -40,33 +43,41 @@ export function EntityLoanDetailPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const load = () => {
-    if (!entityId) return;
-    setLoading(true);
-    Promise.all([
-      api.getEntityActivity(entityId),
-      api.getAccounts(),
-    ])
-      .then(([data, accountList]) => {
-        setEntity(data.entity);
-        setActivity(data.activity);
-        setAccounts(accountList);
-        if (accountList[0]) setAccountId((current) => current || accountList[0]._id);
-        const rows = data.summary.byCurrency.map((row) => {
-          if ("balance" in row) {
-            return { currency: row.currency, balance: row.balance };
-          }
-          return { currency: row.currency, balance: row.remaining };
-        });
-        setBalances(rows);
-        setCurrency(data.entity.currency ?? defaultCurrency);
-      })
-      .finally(() => setLoading(false));
-  };
+  const { data, loading, reload } = useCachedQuery<EntityDetailData>(
+    entityId ? `loan-detail:${entityId}` : null,
+    async () => {
+      const [activityData, accounts] = await Promise.all([
+        api.getEntityActivity(entityId!),
+        api.getAccounts(),
+      ]);
+      const balances = activityData.summary.byCurrency.map((row) => {
+        if ("balance" in row) {
+          return { currency: row.currency, balance: row.balance };
+        }
+        return { currency: row.currency, balance: row.remaining };
+      });
+      return {
+        entity: activityData.entity,
+        activity: activityData.activity,
+        balances,
+        accounts,
+      };
+    },
+    [entityId],
+  );
+
+  const entity = data?.entity ?? null;
+  const activity = data?.activity ?? [];
+  const balances = data?.balances ?? [];
+  const accounts = data?.accounts ?? [];
 
   useEffect(() => {
-    load();
-  }, [entityId]);
+    if (accounts[0]) setAccountId((current) => current || accounts[0]._id);
+  }, [accounts]);
+
+  useEffect(() => {
+    if (entity?.currency) setCurrency(entity.currency);
+  }, [entity?.currency]);
 
   const months = useMemo(() => groupActivityByMonthAndDay(activity), [activity]);
 
@@ -142,7 +153,7 @@ export function EntityLoanDetailPage() {
           });
         }
       } else if (action === "add") {
-        await api.createManualObligation(entityId, amountCents, currency);
+        await api.createManualObligation(entityId, amountCents, currency, memo.trim() || undefined);
       } else {
         await api.createTransaction({
           type: "expense",
@@ -156,7 +167,7 @@ export function EntityLoanDetailPage() {
       }
       setAmount("");
       setMemo("");
-      load();
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {

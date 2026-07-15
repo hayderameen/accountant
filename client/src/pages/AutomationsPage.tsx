@@ -1,15 +1,31 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, type Automation, type Entity } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import { SkeletonList } from "../components/Skeleton";
 import { LoadingLabel } from "../components/LoadingLabel";
 
+type AutomationsData = {
+  automations: Automation[];
+  pendingLoans: Entity[];
+};
+
 export function AutomationsPage() {
   const { user } = useAuth();
   const defaultCurrency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
-  const [automations, setAutomations] = useState<Automation[]>([]);
-  const [pendingLoans, setPendingLoans] = useState<Entity[]>([]);
+  const { data, loading, reload } = useCachedQuery<AutomationsData>(
+    "automations",
+    async () => {
+      const [automations, pendingLoans] = await Promise.all([
+        api.getAutomations(),
+        api.getEntities("i_owe"),
+      ]);
+      return { automations, pendingLoans };
+    },
+  );
+  const automations = data?.automations ?? [];
+  const pendingLoans = data?.pendingLoans ?? [];
   const [name, setName] = useState("");
   const [percentage, setPercentage] = useState("");
   const [useNewEntity, setUseNewEntity] = useState(true);
@@ -17,31 +33,11 @@ export function AutomationsPage() {
   const [entityCurrency, setEntityCurrency] = useState(defaultCurrency);
   const [targetEntityId, setTargetEntityId] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    setSaving(true);
-    try {
-      const [auto, entities] = await Promise.all([
-        api.getAutomations(),
-        api.getEntities("i_owe"),
-      ]);
-      setAutomations(auto);
-      setPendingLoans(entities);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     setEntityCurrency(defaultCurrency);
   }, [defaultCurrency]);
-
-  useEffect(() => {
-    load();
-  }, []);
 
   const entityName = (entity: Entity | string) =>
     typeof entity === "object"
@@ -57,6 +53,7 @@ export function AutomationsPage() {
       return;
     }
 
+    setSaving(true);
     try {
       await api.createAutomation({
         name: name.trim(),
@@ -72,7 +69,7 @@ export function AutomationsPage() {
       setPercentage("");
       setNewEntityName("");
       setTargetEntityId("");
-      await load();
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create");
     } finally {
@@ -82,13 +79,13 @@ export function AutomationsPage() {
 
   const toggleActive = async (a: Automation) => {
     await api.updateAutomation(a._id, { active: !a.active });
-    await load();
+    await reload();
   };
 
   const remove = async (id: string) => {
     if (!confirm("Delete this automation?")) return;
     await api.deleteAutomation(id);
-    await load();
+    await reload();
   };
 
   return (

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, type User } from '../api/client';
+import { clearUserCache } from '../lib/localCache';
 
 interface AuthContextValue {
   user: User | null;
@@ -36,7 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    const userId = user?._id;
     await api.logout();
+    if (userId) clearUserCache(userId);
     setUser(null);
   };
 

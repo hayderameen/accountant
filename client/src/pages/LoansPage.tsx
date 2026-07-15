@@ -10,6 +10,7 @@ import {
 } from "../components/Skeleton";
 import { LoadingLabel } from "../components/LoadingLabel";
 import { useAuth } from "../hooks/useAuth";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { CURRENCIES, FALLBACK_CURRENCY } from "../lib/currencies";
 import {
   balanceForCurrency,
@@ -19,22 +20,26 @@ import {
 
 type Tab = "pending" | "takeback";
 
+type LoansData = {
+  pendingLoans: EntityWithBalances[];
+  takeBack: EntityWithBalances[];
+  entities: EntityWithBalances[];
+};
+
 export function LoansPage() {
   const { user } = useAuth();
   const defaultCurrency = user?.settings?.defaultCurrency ?? FALLBACK_CURRENCY;
   const [tab, setTab] = useState<Tab>("pending");
-  const [pendingLoans, setPendingLoans] = useState<EntityWithBalances[]>([]);
-  const [takeBack, setTakeBack] = useState<EntityWithBalances[]>([]);
-  const [entities, setEntities] = useState<EntityWithBalances[]>([]);
   const [name, setName] = useState("");
-  const [entityDirection, setEntityDirection] = useState<"i_owe" | "they_owe_me">(
-    "i_owe",
-  );
+  const [entityDirection, setEntityDirection] = useState<
+    "i_owe" | "they_owe_me"
+  >("i_owe");
   const [initialAmount, setInitialAmount] = useState("");
   const [entityCurrency, setEntityCurrency] = useState(defaultCurrency);
   const [obligationCurrency, setObligationCurrency] = useState(defaultCurrency);
   const [loanCurrency, setLoanCurrency] = useState(defaultCurrency);
   const [amount, setAmount] = useState("");
+  const [memo, setMemo] = useState("");
   const [selectedEntity, setSelectedEntity] = useState("");
   const [obligationEntity, setObligationEntity] = useState("");
   const [loanAction, setLoanAction] = useState<
@@ -42,12 +47,28 @@ export function LoansPage() {
   >("loan_given");
   const [error, setError] = useState("");
   const [entityError, setEntityError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<
     "entity" | "obligation" | "loan" | null
   >(null);
 
   const tabDirection = tab === "pending" ? "i_owe" : "they_owe_me";
+
+  const { data, loading, reload } = useCachedQuery<LoansData>(
+    `loans:${tab}`,
+    async () => {
+      const [pendingLoans, takeBack, entities] = await Promise.all([
+        api.getEntities("i_owe"),
+        api.getEntities("they_owe_me"),
+        api.getEntities(tabDirection),
+      ]);
+      return { pendingLoans, takeBack, entities };
+    },
+    [tab, tabDirection],
+  );
+
+  const pendingLoans = data?.pendingLoans ?? [];
+  const takeBack = data?.takeBack ?? [];
+  const entities = data?.entities ?? [];
 
   const pendingTotals = useMemo(
     () => flattenEntityBalances(pendingLoans),
@@ -59,22 +80,6 @@ export function LoansPage() {
     [takeBack],
   );
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [pending, takeback, list] = await Promise.all([
-        api.getEntities("i_owe"),
-        api.getEntities("they_owe_me"),
-        api.getEntities(tabDirection),
-      ]);
-      setPendingLoans(pending);
-      setTakeBack(takeback);
-      setEntities(list);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     setEntityCurrency(defaultCurrency);
     setObligationCurrency(defaultCurrency);
@@ -82,16 +87,16 @@ export function LoansPage() {
   }, [defaultCurrency]);
 
   useEffect(() => {
-    load();
     setName("");
     setEntityDirection(tabDirection);
     setInitialAmount("");
     setAmount("");
+    setMemo("");
     setSelectedEntity("");
     setObligationEntity("");
     setError("");
     setEntityError("");
-  }, [tab]);
+  }, [tab, tabDirection]);
 
   const addEntity = async (e: FormEvent) => {
     e.preventDefault();
@@ -100,7 +105,9 @@ export function LoansPage() {
     if (!trimmedName || !initialAmountCents || initialAmountCents <= 0) return;
     setEntityError("");
     const duplicate = [...pendingLoans, ...takeBack].some(
-      (entity) => entity.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase(),
+      (entity) =>
+        entity.name.trim().toLocaleLowerCase() ===
+        trimmedName.toLocaleLowerCase(),
     );
     if (duplicate) {
       setEntityError("An entity with this name already exists");
@@ -117,10 +124,12 @@ export function LoansPage() {
       setName("");
       setInitialAmount("");
       const targetTab = entityDirection === "i_owe" ? "pending" : "takeback";
-      if (targetTab === tab) await load();
+      if (targetTab === tab) await reload();
       else setTab(targetTab);
     } catch (err) {
-      setEntityError(err instanceof Error ? err.message : "Failed to add entity");
+      setEntityError(
+        err instanceof Error ? err.message : "Failed to add entity",
+      );
     } finally {
       setSubmitting(null);
     }
@@ -137,9 +146,11 @@ export function LoansPage() {
         obligationEntity,
         cents,
         obligationCurrency,
+        memo.trim() || undefined,
       );
       setAmount("");
-      await load();
+      setMemo("");
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -170,9 +181,11 @@ export function LoansPage() {
         type: loanAction,
         amount: cents,
         currency: loanCurrency,
+        memo: memo.trim() || undefined,
       });
       setAmount("");
-      await load();
+      setMemo("");
+      await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -268,7 +281,9 @@ export function LoansPage() {
                 type="button"
                 onClick={() => setEntityDirection("they_owe_me")}
                 className={`chip flex-1 ${
-                  entityDirection === "they_owe_me" ? "chip-active" : "chip-idle"
+                  entityDirection === "they_owe_me"
+                    ? "chip-active"
+                    : "chip-idle"
                 }`}
               >
                 Loan given
@@ -323,9 +338,13 @@ export function LoansPage() {
               className="btn-primary text-sm"
               disabled={Boolean(submitting)}
             >
-              {submitting === "entity"
-                ? <LoadingLabel>Adding…</LoadingLabel>
-                : entityDirection === "i_owe" ? "Add loan taken" : "Add loan given"}
+              {submitting === "entity" ? (
+                <LoadingLabel>Adding…</LoadingLabel>
+              ) : entityDirection === "i_owe" ? (
+                "Add loan taken"
+              ) : (
+                "Add loan given"
+              )}
             </button>
           </form>
 
@@ -336,9 +355,7 @@ export function LoansPage() {
               aria-busy={submitting === "obligation"}
               inert={submitting ? true : undefined}
             >
-              <p className="text-mist text-sm">
-                Add amount you owe (manual)
-              </p>
+              <p className="text-mist text-sm">Add amount you owe (manual)</p>
               <select
                 value={obligationEntity}
                 onChange={(e) => setObligationEntity(e.target.value)}
@@ -370,10 +387,23 @@ export function LoansPage() {
                 placeholder="Amount owed"
                 className="field text-sm"
               />
-              <button type="submit" className="btn-primary text-sm" disabled={Boolean(submitting)}>
-                {submitting === "obligation"
-                  ? <LoadingLabel>Adding…</LoadingLabel>
-                  : "Add owed amount"}
+              <input
+                type="text"
+                placeholder="Memo (optional)"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                className="field text-sm"
+              />
+              <button
+                type="submit"
+                className="btn-primary text-sm"
+                disabled={Boolean(submitting)}
+              >
+                {submitting === "obligation" ? (
+                  <LoadingLabel>Adding…</LoadingLabel>
+                ) : (
+                  "Add owed amount"
+                )}
               </button>
             </form>
           )}
@@ -385,9 +415,7 @@ export function LoansPage() {
               aria-busy={submitting === "loan"}
               inert={submitting ? true : undefined}
             >
-              <p className="text-mist text-sm">
-                Record loan or repayment
-              </p>
+              <p className="text-mist text-sm">Record loan or repayment</p>
               <select
                 value={selectedEntity}
                 onChange={(e) => setSelectedEntity(e.target.value)}
@@ -444,8 +472,23 @@ export function LoansPage() {
                   Max {(repaymentMaxCents / 100).toFixed(2)} {loanCurrency}
                 </p>
               )}
-              <button type="submit" className="btn-primary text-sm" disabled={Boolean(submitting)}>
-                {submitting === "loan" ? <LoadingLabel>Recording…</LoadingLabel> : "Record"}
+              <input
+                type="text"
+                placeholder="Memo (optional)"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                className="field text-sm"
+              />
+              <button
+                type="submit"
+                className="btn-primary text-sm"
+                disabled={Boolean(submitting)}
+              >
+                {submitting === "loan" ? (
+                  <LoadingLabel>Recording…</LoadingLabel>
+                ) : (
+                  "Record"
+                )}
               </button>
             </form>
           )}
@@ -465,15 +508,11 @@ export function LoansPage() {
 
           <div className="space-y-2">
             {entities.length === 0 ? (
-              <p className="text-mist text-sm">
-                No entries yet.
-              </p>
+              <p className="text-mist text-sm">No entries yet.</p>
             ) : (
               entities.map((e) => (
                 <Link key={e._id} to={`/loans/${e._id}`} className="list-row">
-                  <p className="text-paper font-medium">
-                    {e.name}
-                  </p>
+                  <p className="text-paper font-medium">{e.name}</p>
                   <EntityBalanceLines
                     balances={e.balancesByCurrency}
                     variant={tab === "pending" ? "owed" : "owedToYou"}

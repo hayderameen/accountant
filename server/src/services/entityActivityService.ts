@@ -50,7 +50,7 @@ export async function getEntityActivity(
         amount: o.totalDue,
         currency,
         label,
-        memo: src?.memo,
+        memo: o.memo ?? src?.memo,
       });
     }
 

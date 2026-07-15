@@ -4,6 +4,7 @@ import { api, type Transaction } from "../api/client";
 import { TransactionItem } from "../components/TransactionItem";
 import { SkeletonList } from "../components/Skeleton";
 import { LoadingLabel } from "../components/LoadingLabel";
+import { useCachedQuery } from "../hooks/useDataSync";
 import { groupByMonthAndDay } from "../lib/groupTransactions";
 
 function SearchIcon() {
@@ -25,27 +26,16 @@ export function TransactionSearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q")?.trim() ?? "";
   const [input, setInput] = useState(query);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(Boolean(query));
-  const [error, setError] = useState("");
+
+  const { data, loading, error } = useCachedQuery<Transaction[]>(
+    query ? `search:${query.toLowerCase()}` : null,
+    () => api.searchTransactions(query),
+    [query],
+  );
+  const transactions = data ?? [];
 
   useEffect(() => {
     setInput(query);
-    if (!query) {
-      setTransactions([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    api
-      .searchTransactions(query)
-      .then(setTransactions)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Search failed"),
-      )
-      .finally(() => setLoading(false));
   }, [query]);
 
   const months = useMemo(
