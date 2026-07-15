@@ -8,11 +8,17 @@ import {
   type Transaction,
 } from "../api/client";
 import { useCachedQuery } from "../hooks/useDataSync";
+import { TransactionItem } from "../components/TransactionItem";
+import { LoanTransactionItem } from "../components/LoanTransactionItem";
+import { SkeletonLedger } from "../components/Skeleton";
+import { PeriodSelector } from "../components/PeriodSelector";
+import { getRange, type RangeMode } from "../lib/dateRange";
 import {
   formatMonthLabel,
   groupByMonthAndDay,
   groupLoansByMonth,
   groupObligationsByMonth,
+  mergeDayItems,
   mergeLoanTotals,
   monthKey,
   startOfMonth,
@@ -27,10 +33,6 @@ import {
   type CurrencyTotals,
   type LoanCurrencyTotals,
 } from "../lib/currencyTotals";
-import { TransactionItem } from "../components/TransactionItem";
-import { SkeletonLedger } from "../components/Skeleton";
-import { PeriodSelector } from "../components/PeriodSelector";
-import { getRange, type RangeMode } from "../lib/dateRange";
 
 function SearchIcon() {
   return (
@@ -294,8 +296,8 @@ export function TransactionsPage() {
   };
 
   const months = useMemo(
-    () => groupByMonthAndDay(transactions),
-    [transactions],
+    () => groupByMonthAndDay(transactions, loans),
+    [transactions, loans],
   );
 
   // Per-month loan totals: merge all three sources
@@ -470,21 +472,32 @@ export function TransactionsPage() {
 
                 {month && (
                   <div className="space-y-4">
-                    {month.days.map((day) => (
-                      <div key={day.key}>
-                        <p className="section-label mb-2">{day.label}</p>
-                        <div className="space-y-2">
-                          {day.transactions.map((t) => (
-                            <TransactionItem
-                              key={t._id}
-                              transaction={t}
-                              hideDate
-                              onDelete={handleDelete}
-                            />
-                          ))}
+                    {month.days.map((day) => {
+                      const items = mergeDayItems(day.transactions, day.loans);
+                      return (
+                        <div key={day.key}>
+                          <p className="section-label mb-2">{day.label}</p>
+                          <div className="space-y-2">
+                            {items.map((item) =>
+                              item.kind === "transaction" ? (
+                                <TransactionItem
+                                  key={item.id}
+                                  transaction={item.transaction}
+                                  hideDate
+                                  onDelete={handleDelete}
+                                />
+                              ) : (
+                                <LoanTransactionItem
+                                  key={item.id}
+                                  loan={item.loan}
+                                  hideDate
+                                />
+                              ),
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </section>

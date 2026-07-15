@@ -5,6 +5,7 @@ export interface DayGroup {
   key: string;
   label: string;
   transactions: Transaction[];
+  loans: LoanTransaction[];
 }
 
 export interface MonthGroup {
@@ -12,6 +13,33 @@ export interface MonthGroup {
   label: string;
   byCurrency: CurrencyTotals[];
   days: DayGroup[];
+}
+
+export type LedgerListItem =
+  | { kind: "transaction"; date: string; id: string; transaction: Transaction }
+  | { kind: "loan"; date: string; id: string; loan: LoanTransaction };
+
+export function mergeDayItems(
+  transactions: Transaction[],
+  loans: LoanTransaction[],
+): LedgerListItem[] {
+  const items: LedgerListItem[] = [
+    ...transactions.map((transaction) => ({
+      kind: "transaction" as const,
+      date: transaction.date,
+      id: transaction._id,
+      transaction,
+    })),
+    ...loans.map((loan) => ({
+      kind: "loan" as const,
+      date: loan.date,
+      id: loan._id,
+      loan,
+    })),
+  ];
+  return items.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 }
 
 export function startOfMonth(d: Date): Date {
@@ -23,43 +51,56 @@ export function endOfMonth(d: Date): Date {
 }
 
 export function monthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export function dayKey(d: Date): string {
-  return `${monthKey(d)}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${monthKey(d)}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function formatMonthLabel(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
 export function formatDayLabel(d: Date): string {
   return d.toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
+    weekday: "long",
+    day: "numeric",
+    month: "long",
   });
 }
 
-export function groupByMonthAndDay(transactions: Transaction[]): MonthGroup[] {
-  const monthMap = new Map<string, Map<string, Transaction[]>>();
+export function groupByMonthAndDay(
+  transactions: Transaction[],
+  loans: LoanTransaction[] = [],
+): MonthGroup[] {
+  const monthMap = new Map<
+    string,
+    Map<string, { transactions: Transaction[]; loans: LoanTransaction[] }>
+  >();
 
-  for (const t of transactions) {
-    const date = new Date(t.date);
+  const ensureDay = (date: Date) => {
     const mKey = monthKey(date);
     const dKey = dayKey(date);
-
     if (!monthMap.has(mKey)) monthMap.set(mKey, new Map());
     const dayMap = monthMap.get(mKey)!;
-    if (!dayMap.has(dKey)) dayMap.set(dKey, []);
-    dayMap.get(dKey)!.push(t);
+    if (!dayMap.has(dKey)) {
+      dayMap.set(dKey, { transactions: [], loans: [] });
+    }
+    return dayMap.get(dKey)!;
+  };
+
+  for (const t of transactions) {
+    ensureDay(new Date(t.date)).transactions.push(t);
+  }
+  for (const loan of loans) {
+    ensureDay(new Date(loan.date)).loans.push(loan);
   }
 
   const months: MonthGroup[] = [];
 
   for (const [mKey, dayMap] of monthMap) {
-    const [year, month] = mKey.split('-').map(Number);
+    const [year, month] = mKey.split("-").map(Number);
     const monthDate = new Date(year, month - 1, 1);
     const days: DayGroup[] = [];
     const monthTransactions: Transaction[] = [];
@@ -67,16 +108,19 @@ export function groupByMonthAndDay(transactions: Transaction[]): MonthGroup[] {
     const sortedDays = [...dayMap.keys()].sort((a, b) => b.localeCompare(a));
 
     for (const dKey of sortedDays) {
-      const txns = dayMap.get(dKey)!;
-      monthTransactions.push(...txns);
+      const bucket = dayMap.get(dKey)!;
+      monthTransactions.push(...bucket.transactions);
 
-      const [, , day] = dKey.split('-').map(Number);
+      const [, , day] = dKey.split("-").map(Number);
       const dayDate = new Date(year, month - 1, day);
       days.push({
         key: dKey,
         label: formatDayLabel(dayDate),
-        transactions: txns.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        transactions: bucket.transactions.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        ),
+        loans: bucket.loans.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         ),
       });
     }

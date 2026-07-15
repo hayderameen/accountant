@@ -1,11 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type EntityWithBalances, type Transaction } from "../api/client";
+import {
+  api,
+  type EntityWithBalances,
+  type LoanTransaction,
+  type Transaction,
+} from "../api/client";
 import { EntityBalanceLines } from "../components/EntityBalanceLines";
 import { LoanCurrencySummary } from "../components/LoanCurrencySummary";
+import { LoanTransactionItem } from "../components/LoanTransactionItem";
 import { TransactionItem } from "../components/TransactionItem";
 import { SkeletonList, SkeletonSummary } from "../components/Skeleton";
 import { useCachedQuery } from "../hooks/useDataSync";
+import { mergeDayItems } from "../lib/groupTransactions";
 import { flattenEntityBalances } from "../lib/loanTotals";
 
 function SectionHeader({
@@ -45,6 +52,7 @@ type DashboardData = {
   pendingLoans: EntityWithBalances[];
   takeBack: EntityWithBalances[];
   transactions: Transaction[];
+  loans: LoanTransaction[];
 };
 
 export function DashboardPage() {
@@ -52,22 +60,28 @@ export function DashboardPage() {
   const { data, loading, reload, setData } = useCachedQuery<DashboardData>(
     "dashboard",
     async () => {
-      const [pending, takeback, txns] = await Promise.all([
+      const [pending, takeback, txns, loanTxns] = await Promise.all([
         api.getEntities("i_owe"),
         api.getEntities("they_owe_me"),
         api.getTransactions(),
+        api.getLoanTransactions(),
       ]);
       return {
         pendingLoans: pending,
         takeBack: takeback,
-        transactions: txns.slice(0, 5),
+        transactions: txns,
+        loans: loanTxns,
       };
     },
   );
 
   const pendingLoans = data?.pendingLoans ?? [];
   const takeBack = data?.takeBack ?? [];
-  const transactions = data?.transactions ?? [];
+  const recentItems = useMemo(
+    () =>
+      mergeDayItems(data?.transactions ?? [], data?.loans ?? []).slice(0, 5),
+    [data?.transactions, data?.loans],
+  );
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this transaction?")) return;
@@ -206,16 +220,20 @@ export function DashboardPage() {
           <SkeletonList count={4} />
         ) : (
           <div className="space-y-2">
-            {transactions.length === 0 ? (
+            {recentItems.length === 0 ? (
               <EmptyState text="No transactions yet." />
             ) : (
-              transactions.map((t) => (
-                <TransactionItem
-                  key={t._id}
-                  transaction={t}
-                  onDelete={handleDelete}
-                />
-              ))
+              recentItems.map((item) =>
+                item.kind === "transaction" ? (
+                  <TransactionItem
+                    key={item.id}
+                    transaction={item.transaction}
+                    onDelete={handleDelete}
+                  />
+                ) : (
+                  <LoanTransactionItem key={item.id} loan={item.loan} />
+                ),
+              )
             )}
           </div>
         )}
