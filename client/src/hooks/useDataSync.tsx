@@ -214,7 +214,10 @@ export function useCachedQuery<T>(
   const updateData = useCallback(
     (value: T | null | ((prev: T | null) => T | null)) => {
       setData((prev) => {
-        const next = typeof value === "function" ? value(prev) : value;
+        const next =
+          typeof value === "function"
+            ? (value as (prev: T | null) => T | null)(prev)
+            : value;
         if (userId && key && next != null) writeCached(userId, key, next);
         return next;
       });
